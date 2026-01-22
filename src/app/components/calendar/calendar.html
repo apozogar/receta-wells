@@ -5,6 +5,8 @@
 
 <div class="controls">
     <button (click)="generateCalendar()">🔄 Generar Nuevo Menú</button>
+    <button (click)="saveCalendar()">💾 Guardar</button>
+    <button (click)="loadSavedCalendar()">📂 Cargar</button>
     <button (click)="print()" style="background-color: #7f8c8d; margin-left: 10px;">🖨️ Imprimir</button>
     <button (click)="addToShoppingList()" style="background-color: #27ae60; margin-left: 10px;">🛒 Cookidoo</button>
 </div>
@@ -15,16 +17,33 @@
     <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'empty': day.isEmpty}">
         <ng-container *ngIf="!day.isEmpty">
             <div class="date-number">{{ day.day }}</div>
-            <div class="meal lunch" *ngIf="day.lunch">
-                <strong>ALMUERZO</strong>
-                {{ day.lunch.name }} <br>
-                <span *ngFor="let tag of day.lunch.tags" class="tag">{{ tag }}</span>
+            
+            <div class="meal lunch">
+                <ng-container *ngIf="editingDay !== day || editingSlot !== 'lunch'">
+                    <div (click)="startEdit(day, 'lunch')" class="meal-content">
+                        <strong>ALMUERZO</strong>
+                        {{ day.lunch?.name }} <br>
+                        <span *ngFor="let tag of day.lunch?.tags" class="tag">{{ tag }}</span>
+                    </div>
+                </ng-container>
+                <select *ngIf="editingDay === day && editingSlot === 'lunch'" [(ngModel)]="day.lunch" (change)="finishEdit()" class="meal-select">
+                    <option [ngValue]="r" *ngFor="let r of availableRecipesForSlot">{{ r.name }}</option>
+                </select>
             </div>
+
             <div style="border-top: 1px dashed #eee; margin: 5px 0;"></div>
-            <div class="meal dinner" *ngIf="day.dinner">
-                <strong>CENA</strong>
-                {{ day.dinner.name }} <br>
-                <span *ngFor="let tag of day.dinner.tags" class="tag">{{ tag }}</span>
+            
+            <div class="meal dinner">
+                <ng-container *ngIf="editingDay !== day || editingSlot !== 'dinner'">
+                    <div (click)="startEdit(day, 'dinner')" class="meal-content">
+                        <strong>CENA</strong>
+                        {{ day.dinner?.name }} <br>
+                        <span *ngFor="let tag of day.dinner?.tags" class="tag">{{ tag }}</span>
+                    </div>
+                </ng-container>
+                <select *ngIf="editingDay === day && editingSlot === 'dinner'" [(ngModel)]="day.dinner" (change)="finishEdit()" class="meal-select">
+                    <option [ngValue]="r" *ngFor="let r of availableRecipesForSlot">{{ r.name }}</option>
+                </select>
             </div>
         </ng-container>
     </div>
