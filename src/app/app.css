@@ -1,0 +1,15 @@
+/* Estilos globales migrados de calendario_dieta.html */
+:root {
+  --primary: #2c3e50;
+  --accent: #e74c3c;
+  --lunch-color: #2980b9;
+  --dinner-color: #27ae60;
+  --bg: #f4f7f6;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg);
+  color: var(--primary);
+  margin: 0;
+}
