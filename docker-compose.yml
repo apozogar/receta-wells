@@ -1,0 +1,16 @@
+services:
+  api:
+    build: ./server
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persistencia: Mapeamos el archivo de base de datos local al contenedor
+      # IMPORTANTE: El archivo menu.db debe existir en tu host, si no Docker creará una carpeta
+      - ./server/menu.db:/usr/src/app/menu.db
+
+  web:
+    build: .
+    ports:
+      - "80:80"
+    depends_on:
+      - api

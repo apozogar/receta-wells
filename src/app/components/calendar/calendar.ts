@@ -5,6 +5,7 @@ import { CalendarEntry, MenuService, Recipe } from '../../services/menu.service'
 
 interface CalendarDay {
   day: number | null;
+  dayName: string;
   isToday: boolean;
   lunch?: Recipe;
   dinner?: Recipe;
@@ -97,7 +98,7 @@ export class Calendar implements OnInit {
 
     // Rellenar huecos vacíos antes del día 1
     for (let i = 1; i < startingDay; i++) {
-      this.calendarDays.push({ day: null, isToday: false, isEmpty: true });
+      this.calendarDays.push({ day: null, dayName: '', isToday: false, isEmpty: true });
     }
 
     let usedIds: (number | null)[] = [];
@@ -106,6 +107,7 @@ export class Calendar implements OnInit {
     for (let d = 1; d <= daysInMonth; d++) {
       const currentDayDate = new Date(year, month, d);
       const dayOfWeek = currentDayDate.getDay(); // 0 (Dom) - 6 (Sab)
+      const dayNameIndex = (dayOfWeek + 6) % 7; // Convertir a 0=Lunes ... 6=Domingo
 
       const rule = this.rules[dayOfWeek];
 
@@ -118,6 +120,7 @@ export class Calendar implements OnInit {
 
       this.calendarDays.push({
         day: d,
+        dayName: this.weekDays[dayNameIndex],
         isToday: d === todayDate,
         lunch: lunch,
         dinner: dinner,
@@ -142,7 +145,7 @@ export class Calendar implements OnInit {
         const todayDate = now.getDate();
 
         for (let i = 1; i < startingDay; i++) {
-          this.calendarDays.push({ day: null, isToday: false, isEmpty: true });
+          this.calendarDays.push({ day: null, dayName: '', isToday: false, isEmpty: true });
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
@@ -150,8 +153,12 @@ export class Calendar implements OnInit {
           const lunch = entry ? this.getRecipeById(entry.lunch_recipe_id) : undefined;
           const dinner = entry ? this.getRecipeById(entry.dinner_recipe_id) : undefined;
 
+          const currentDayDate = new Date(year, month, d);
+          const dayNameIndex = (currentDayDate.getDay() + 6) % 7;
+
           this.calendarDays.push({
             day: d,
+            dayName: this.weekDays[dayNameIndex],
             isToday: d === todayDate,
             lunch: lunch,
             dinner: dinner,

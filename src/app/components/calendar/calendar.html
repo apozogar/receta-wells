@@ -1,5 +1,5 @@
 <header>
-    <h1>Planificación Mensual (Objetivo Boda)</h1>
+    <h1>Receta Wells</h1>
     <p>Thermomix • CrossFit • Déficit Calórico</p>
 </header>
 
@@ -7,8 +7,8 @@
     <button (click)="generateCalendar()">🔄 Generar Nuevo Menú</button>
     <button (click)="saveCalendar()">💾 Guardar</button>
     <button (click)="loadSavedCalendar()">📂 Cargar</button>
-    <button (click)="print()" style="background-color: #7f8c8d; margin-left: 10px;">🖨️ Imprimir</button>
-    <button (click)="addToShoppingList()" style="background-color: #27ae60; margin-left: 10px;">🛒 Cookidoo</button>
+    <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
+    <button (click)="addToShoppingList()" class="btn-success">🛒 Cookidoo</button>
 </div>
 
 <div class="calendar-container">
@@ -16,7 +16,10 @@
     
     <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'empty': day.isEmpty}">
         <ng-container *ngIf="!day.isEmpty">
-            <div class="date-number">{{ day.day }}</div>
+            <div class="day-card-header">
+                <span class="mobile-day-name">{{ day.dayName }}</span>
+                <span class="date-number">{{ day.day }}</span>
+            </div>
             
             <div class="meal lunch">
                 <ng-container *ngIf="editingDay !== day || editingSlot !== 'lunch'">
