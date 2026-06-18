@@ -762,7 +762,7 @@ app.put('/api/settings/batch', authMiddleware, async (req, res) => {
 function findDistPath() {
   const candidates = [
     path.join(__dirname, '..', 'dist', 'menubox', 'browser'),
-    path.join(__dirname, '..', 'dist', 'receta-wells', 'browser'),
+    path.join(__dirname, '..', 'dist', 'menubox', 'browser'),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;

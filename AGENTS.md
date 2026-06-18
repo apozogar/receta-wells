@@ -1,4 +1,4 @@
-# MenuBox / Receta Wells
+# MenuBox
 
 App web SPA (Angular 21 + Express + PostgreSQL) para planificación semanal de comidas, integrada con Thermomix (Cookidoo) y Mercadona.
 
@@ -16,7 +16,7 @@ App web SPA (Angular 21 + Express + PostgreSQL) para planificación semanal de c
 ## Estructura
 
 ```
-receta-wells/
+menubox/
 ├── src/                         # Frontend Angular
 │   ├── main.ts                  # bootstrapApplication
 │   ├── app/

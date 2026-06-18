@@ -1,6 +1,6 @@
 services:
   api:
-    image: apozogar/receta-wells-api:latest
+    image: apozogar/menubox-api:latest
     ports:
       - "3000:3000"
     volumes:
@@ -9,7 +9,7 @@ services:
       - ./server/menu.db:/usr/src/app/menu.db
 
   web:
-    image: apozogar/receta-wells-web:latest
+    image: apozogar/menubox-web:latest
     build: .
     ports:
       - "80:80"

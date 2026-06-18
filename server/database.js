@@ -103,7 +103,7 @@ async function initDatabase() {
     const hash = bcrypt.hashSync('admin123', 10);
     const adminResult = await query(
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
-      ['admin', 'admin@recetawells.app', hash]
+      ['admin', 'admin@menubox.app', hash]
     );
     const adminId = adminResult.rows[0].id;
     console.log('👤 Usuario admin creado (admin / admin123)');

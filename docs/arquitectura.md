@@ -78,6 +78,6 @@ services:
 
 ### Producción
 
-- Imágenes publicadas en Docker Hub como `apozogar/receta-wells-api` y `apozogar/receta-wells-web`
+- Imágenes publicadas en Docker Hub como `apozogar/menubox-api` y `apozogar/menubox-web`
 - La API usa PostgreSQL directamente (localhost:5432)
 - El frontend se sirve como contenido estático via Nginx

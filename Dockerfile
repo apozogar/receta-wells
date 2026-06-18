@@ -14,6 +14,6 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copiamos los archivos compilados. NOTA: Verifica si tu carpeta dist tiene subcarpeta 'browser' (Angular 17+)
-COPY --from=build /usr/src/app/dist/receta-wells/browser /usr/share/nginx/html
+COPY --from=build /usr/src/app/dist/menubox/browser /usr/share/nginx/html
 
 EXPOSE 80

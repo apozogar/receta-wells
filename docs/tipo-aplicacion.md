@@ -1,6 +1,6 @@
 # Tipo de Aplicación
 
-**MenuBox / Receta Wells** es una aplicación web **SPA (Single Page Application)** de planificación semanal de comidas, orientada a usuarios de **Thermomix** y **Mercadona**.
+**MenuBox** es una aplicación web **SPA (Single Page Application)** de planificación semanal de comidas, orientada a usuarios de **Thermomix** y **Mercadona**.
 
 ## Propósito
 
