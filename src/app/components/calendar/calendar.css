@@ -1,104 +1,589 @@
 :host {
-    --primary: #2c3e50;
-    --accent: #e74c3c;
-    --lunch-color: #2980b9;
-    --dinner-color: #27ae60;
-    --bg: #f4f7f6;
-
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg);
-    color: var(--primary);
-    padding: 20px;
-    display: block;
+  display: block;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
 }
 
-header { text-align: center; margin-bottom: 20px; }
-h1 { margin: 0; font-size: 1.8rem; }
-p { color: #7f8c8d; margin-top: 5px; }
-
-.controls { 
-    display: flex; 
-    flex-wrap: wrap; 
-    justify-content: center; 
-    gap: 10px; 
-    margin-bottom: 20px; 
+/* ── Month Navigation ── */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 20px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
-button {
-    background-color: var(--primary); color: white; border: none; padding: 10px 15px;
-    font-size: 1rem; cursor: pointer; border-radius: 5px; transition: 0.3s;
+.btn-nav {
+  background: #fff;
+  color: #1e293b;
+  font-size: 1rem;
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.2s;
+  font-weight: 600;
 }
-button:hover { background-color: var(--accent); }
-.btn-secondary { background-color: #7f8c8d; }
-.btn-success { background-color: #27ae60; }
 
+.btn-nav:hover {
+  background: #1e293b;
+  color: #fff;
+  border-color: #1e293b;
+}
+
+.month-title {
+  min-width: 200px;
+  text-align: center;
+}
+
+/* ── Action Bar ── */
+.nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.nav-bar button,
+.nav-bar a {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.nav-bar button:hover,
+.nav-bar a:hover {
+  border-color: #1e293b;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.nav-bar .btn-success {
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.nav-bar .btn-success:hover {
+  background: #27ae60;
+  color: #fff;
+}
+
+.nav-bar .btn-mercadona {
+  border-color: #e67e22;
+  color: #e67e22;
+}
+
+.nav-bar .btn-mercadona:hover {
+  background: #e67e22;
+  color: #fff;
+}
+
+/* ── Calendar Grid ── */
 .calendar-container {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
-    max-width: 1400px;
-    margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
 }
 
 .day-header {
-    text-align: center; font-weight: bold; padding: 10px; background: #ddd; border-radius: 5px;
+  text-align: center;
+  font-weight: 600;
+  padding: 10px;
+  background: #1e293b;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .day-card {
-    background: white; border-radius: 8px; padding: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    min-height: 140px; display: flex; flex-direction: column;
-    border: 1px solid transparent;
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.2s;
 }
 
-.day-card.today { border: 2px solid var(--accent); }
-.day-card.empty { background: transparent; box-shadow: none; }
+.day-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
 
-.day-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.date-number { font-weight: bold; font-size: 1.1rem; color: #95a5a6; }
-.mobile-day-name { display: none; font-weight: bold; color: var(--primary); text-transform: uppercase; font-size: 0.9rem; }
+.day-card.today {
+  border-color: #e94560;
+  border-width: 2px;
+}
 
+.day-card.past {
+  opacity: 0.55;
+  background: #f9fafb;
+}
+
+.day-card.empty {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  min-height: 0;
+}
+
+/* ── Day Card Header ── */
+.day-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.date-number {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1e293b;
+  background: #f0f2f5;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.mobile-day-name {
+  display: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
+/* ── Meal Sections ── */
 .meal-content {
-    cursor: pointer;
-    padding: 2px;
-    border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
 }
+
 .meal-content:hover {
-    background-color: #f0f0f0;
+  background: #f8f9fa;
 }
 
-.meal { font-size: 0.85rem; margin-bottom: 8px; line-height: 1.3; }
-.meal strong { display: block; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 2px; }
+.meal-content.disabled {
+  cursor: default;
+  opacity: 0.7;
+}
 
-.lunch strong { color: var(--lunch-color); }
-.dinner strong { color: var(--dinner-color); }
+.meal-content.disabled:hover {
+  background: transparent;
+}
 
-.tag { display: inline-block; font-size: 0.7em; padding: 2px 5px; background: #eee; border-radius: 4px; margin-top: 2px; color: #555; }
+.meal {
+  font-size: 0.82rem;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.meal strong {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.lunch strong {
+  color: #0f3460;
+}
+
+.dinner strong {
+  color: #27ae60;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  margin-top: 2px;
+  color: #6b7280;
+}
 
 .meal-select {
-    width: 100%;
-    font-size: 0.85rem;
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
 }
 
-/* --- RESPONSIVE PARA MÓVILES --- */
+/* ── States ── */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+.loading::after {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #e94560;
+  border-radius: 50%;
+  margin: 16px auto 0;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.load-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px 16px;
+  margin: 12px 0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  border: 1px solid #fecaca;
+  text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  max-width: 560px;
+  width: 92%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px 8px;
+  transition: color 0.15s;
+}
+
+.modal-close:hover {
+  color: #e94560;
+}
+
+.modal-content h2 {
+  margin: 0 0 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.modal-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+.modal-loading::after {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #e94560;
+  border-radius: 50%;
+  margin: 16px auto 0;
+  animation: spin 0.7s linear infinite;
+}
+
+.modal-results {
+  margin-bottom: 16px;
+}
+
+.sync-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  border: 1px solid #fecaca;
+}
+
+.sync-section {
+  margin-bottom: 14px;
+}
+
+.sync-section h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.sync-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.sync-section li {
+  margin-bottom: 3px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.sync-date {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.sync-recipe {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.sync-empty {
+  color: #9ca3af;
+  text-align: center;
+  padding: 20px;
+}
+
+.ingredient-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* ── Recipe Picker Modal ── */
+.recipe-picker {
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-subtitle {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: -8px 0 16px;
+}
+
+.picker-groups {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.picker-group {
+  margin-bottom: 16px;
+}
+
+.picker-group-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #e94560;
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.picker-recipes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.picker-recipe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.85rem;
+}
+
+.picker-recipe:hover {
+  background: #e94560;
+  color: #fff;
+  border-color: #e94560;
+}
+
+.picker-recipe:hover .tag {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.picker-recipe-name {
+  font-weight: 500;
+}
+
+.picker-btn {
+  width: 100%;
+  padding: 10px;
+  background: #1e293b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.picker-btn:hover {
+  background: #e94560;
+}
+
+.btn-primary {
+  background: #1e293b;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #e94560;
+}
+
+.modal-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: #1e293b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-btn:hover {
+  background: #e94560;
+}
+
+/* ── Mobile ── */
 @media (max-width: 768px) {
-    .calendar-container {
-        grid-template-columns: 1fr; /* Una sola columna */
-    }
-    .day-header {
-        display: none; /* Ocultar cabeceras de tabla */
-    }
-    .day-card.empty {
-        display: none; /* Ocultar días vacíos de relleno */
-    }
-    .mobile-day-name {
-        display: block; /* Mostrar nombre del día dentro de la tarjeta */
-    }
+  :host {
+    padding: 0 12px 24px;
+  }
+
+  .calendar-container {
+    grid-template-columns: 1fr;
+  }
+
+  .day-header {
+    display: none;
+  }
+
+  .day-card.empty {
+    display: none;
+  }
+
+  .mobile-day-name {
+    display: block;
+  }
+
+  .day-card {
+    min-height: auto;
+  }
+
+  .nav-bar {
+    gap: 6px;
+  }
+
+  .nav-bar button,
+  .nav-bar a {
+    font-size: 0.78rem;
+    padding: 6px 10px;
+  }
 }
 
+/* ── Print ── */
 @media print {
-    :host { background: white; padding: 0; }
-    .controls { display: none; }
-    .calendar-container { gap: 5px; }
-    .day-card { border: 1px solid #ccc; box-shadow: none; min-height: 120px; }
+  :host {
+    background: white;
+    padding: 0;
+  }
+
+  .nav-bar {
+    display: none;
+  }
+
+  .calendar-container {
+    gap: 5px;
+  }
+
+  .day-card {
+    border: 1px solid #ccc;
+    box-shadow: none;
+    min-height: 120px;
+  }
 }

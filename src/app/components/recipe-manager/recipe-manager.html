@@ -1,0 +1,98 @@
+<header>
+  <h1>Gestión de Recetas</h1>
+</header>
+
+<div class="controls">
+  <button (click)="startNew()">➕ Nueva Receta</button>
+</div>
+
+<div class="form-card" *ngIf="isNew || editingRecipe">
+  <h3>{{ isNew ? 'Nueva Receta' : 'Editar Receta' }}</h3>
+  <div class="form-grid">
+    <label>
+      Nombre
+      <input [(ngModel)]="form.name" placeholder="Nombre de la receta" />
+    </label>
+    <label>
+      Tipo
+      <select [(ngModel)]="form.type">
+        <option *ngFor="let t of typeOptions" [value]="t">{{ t }}</option>
+      </select>
+    </label>
+    <label>
+      Slot
+      <select [(ngModel)]="form.slot">
+        <option *ngFor="let s of slotOptions" [value]="s.value">{{ s.label }}</option>
+      </select>
+    </label>
+    <label class="cookidoo-label">
+      Cookidoo ID
+      <div class="cookidoo-search-row">
+        <input [(ngModel)]="form.cookidooId" placeholder="Ej: r255618" />
+        <button type="button" (click)="searchCookidoo()" class="btn-small" [disabled]="searching || !form.name.trim()">
+          {{ searching ? 'Buscando…' : '🔍' }}
+        </button>
+      </div>
+      <div class="cookidoo-results" *ngIf="searchResults.length">
+        <div
+          *ngFor="let r of searchResults"
+          class="cookidoo-result"
+          (click)="selectCookidooResult(r)"
+        >
+          {{ r.name }}
+          <span class="cookidoo-id">{{ r.id }}</span>
+        </div>
+      </div>
+    </label>
+  </div>
+
+  <div class="tags-section">
+    <label>Tags</label>
+    <div class="tag-input-row">
+      <input [(ngModel)]="tagInput" (keyup.enter)="addTag()" placeholder="Añadir tag..." />
+      <button (click)="addTag()" class="btn-small">+</button>
+    </div>
+    <div class="tag-list">
+      <span *ngFor="let tag of form.tags" class="tag">
+        {{ tag }} <button (click)="removeTag(tag)" class="tag-remove">×</button>
+      </span>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button (click)="save()" class="btn-primary">💾 Guardar</button>
+    <button (click)="cancelEdit()" class="btn-secondary">Cancelar</button>
+  </div>
+</div>
+
+<div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+<div class="loading" *ngIf="loading">Cargando recetas…</div>
+
+<table class="recipe-table" *ngIf="!loading">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Tipo</th>
+      <th>Slot</th>
+      <th>Tags</th>
+      <th>Cookidoo</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let recipe of recipes">
+      <td>{{ recipe.name }}</td>
+      <td><span class="badge">{{ recipe.type }}</span></td>
+      <td>{{ slotLabel(recipe.slot) }}</td>
+      <td>
+        <span *ngFor="let tag of recipe.tags" class="tag">{{ tag }}</span>
+        <span *ngIf="!recipe.tags.length">—</span>
+      </td>
+      <td>{{ recipe.cookidooId || '—' }}</td>
+      <td class="actions">
+        <button (click)="startEdit(recipe)" class="btn-small">✏️</button>
+        <button (click)="deleteRecipe(recipe)" class="btn-small btn-danger">🗑️</button>
+      </td>
+    </tr>
+  </tbody>
+</table>

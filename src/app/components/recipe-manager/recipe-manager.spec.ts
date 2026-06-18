@@ -2,23 +2,22 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 
-import { Calendar } from './calendar';
+import { RecipeManager } from './recipe-manager';
 
-describe('Calendar', () => {
-  let component: Calendar;
-  let fixture: ComponentFixture<Calendar>;
+describe('RecipeManager', () => {
+  let component: RecipeManager;
+  let fixture: ComponentFixture<RecipeManager>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Calendar],
+      imports: [RecipeManager],
       providers: [
         provideRouter([]),
         provideHttpClient(),
       ],
-    })
-    .compileComponents();
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(Calendar);
+    fixture = TestBed.createComponent(RecipeManager);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

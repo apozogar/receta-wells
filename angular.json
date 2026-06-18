@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "receta-wells": {
+    "menubox": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -39,8 +39,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "16kB",
+                  "maximumError": "32kB"
                 }
               ],
               "outputHashing": "all"
@@ -55,12 +55,15 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
-              "buildTarget": "receta-wells:build:production"
+              "buildTarget": "menubox:build:production"
             },
             "development": {
-              "buildTarget": "receta-wells:build:development"
+              "buildTarget": "menubox:build:development"
             }
           },
           "defaultConfiguration": "development"

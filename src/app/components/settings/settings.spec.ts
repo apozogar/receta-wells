@@ -2,23 +2,19 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 
-import { Calendar } from './calendar';
+import { Settings } from './settings';
 
-describe('Calendar', () => {
-  let component: Calendar;
-  let fixture: ComponentFixture<Calendar>;
+describe('Settings', () => {
+  let component: Settings;
+  let fixture: ComponentFixture<Settings>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Calendar],
-      providers: [
-        provideRouter([]),
-        provideHttpClient(),
-      ],
-    })
-    .compileComponents();
+      imports: [Settings],
+      providers: [provideRouter([]), provideHttpClient()],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(Calendar);
+    fixture = TestBed.createComponent(Settings);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

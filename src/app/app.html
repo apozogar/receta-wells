@@ -1,1 +1,126 @@
-<app-calendar></app-calendar>
+<div class="app-layout">
+  <!-- Mobile header -->
+  <div class="mobile-header" *ngIf="user && !isLoginPage()">
+    <span class="mobile-brand">MenuBox</span>
+    <div class="menu-dropdown mobile" *ngIf="menus.length > 0">
+      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
+        <span>📋</span>
+        <span class="menu-toggle-label">{{ currentMenuName }}</span>
+        <span class="menu-toggle-arrow">▼</span>
+      </button>
+      <div class="menu-dropdown-panel" *ngIf="showMenuDropdown">
+        <div class="menu-dropdown-items">
+          <button *ngFor="let m of menus"
+                  class="menu-dropdown-item"
+                  [class.active]="m.id === currentMenuId"
+                  (click)="selectMenu(m.id)">
+            <span class="menu-item-name">{{ m.name }}</span>
+            <span class="menu-item-actions">
+              <span class="menu-action-btn" (click)="openRenameMenu(m, $event)" title="Renombrar">✎</span>
+              <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
+            </span>
+          </button>
+        </div>
+        <div class="menu-dropdown-divider"></div>
+        <button class="menu-dropdown-create" (click)="openCreateMenu()">＋ Nuevo menú</button>
+      </div>
+    </div>
+    <div class="mobile-user">
+      <span class="user-name">{{ user.username }}</span>
+      <button (click)="logout()" class="btn-logout">Salir</button>
+    </div>
+  </div>
+
+  <!-- Sidebar (desktop) -->
+  <aside class="sidebar" *ngIf="user && !isLoginPage()">
+    <div class="sidebar-header">
+      <h1 class="sidebar-title">MenuBox</h1>
+      <span class="sidebar-subtitle">Planificador de comidas</span>
+    </div>
+
+    <div class="menu-dropdown desktop" *ngIf="menus.length > 0">
+      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
+        <span class="menu-toggle-label">{{ currentMenuName }}</span>
+        <span class="menu-toggle-arrow">▼</span>
+      </button>
+      <div class="menu-dropdown-panel" *ngIf="showMenuDropdown">
+        <div class="menu-dropdown-items">
+          <button *ngFor="let m of menus"
+                  class="menu-dropdown-item"
+                  [class.active]="m.id === currentMenuId"
+                  (click)="selectMenu(m.id)">
+            <span class="menu-item-name">{{ m.name }}</span>
+            <span class="menu-item-actions">
+              <span class="menu-action-btn" (click)="openRenameMenu(m, $event)" title="Renombrar">✎</span>
+              <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
+            </span>
+          </button>
+        </div>
+        <div class="menu-dropdown-divider"></div>
+        <button class="menu-dropdown-create" (click)="openCreateMenu()">＋ Nuevo menú</button>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a *ngFor="let item of navItems"
+         [routerLink]="item.path"
+         class="nav-item"
+         [class.active]="isActive(item.path)">
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-label">{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <span class="user-avatar">👤</span>
+        <span class="user-name">{{ user.username }}</span>
+      </div>
+      <button (click)="logout()" class="btn-logout">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <router-outlet></router-outlet>
+  </div>
+
+  <!-- Bottom navigation (mobile) -->
+  <nav class="bottom-nav" *ngIf="user && !isLoginPage()">
+    <a *ngFor="let item of navItems"
+       [routerLink]="item.path"
+       class="bottom-nav-item"
+       [class.active]="isActive(item.path)">
+      <span class="bottom-nav-icon">{{ item.icon }}</span>
+      <span class="bottom-nav-label">{{ item.label }}</span>
+    </a>
+  </nav>
+</div>
+
+<app-toast-container></app-toast-container>
+<app-confirm-modal></app-confirm-modal>
+
+<!-- Menu modal -->
+<div class="modal-overlay" *ngIf="showMenuModal" (click)="closeMenuModal()">
+  <div class="modal-content menu-modal" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="closeMenuModal()">✕</button>
+    <h2>{{ menuModalMode === 'create' ? 'Nuevo menú' : 'Renombrar menú' }}</h2>
+    <input
+      class="menu-modal-input"
+      type="text"
+      [(ngModel)]="menuModalName"
+      placeholder="Nombre del menú"
+      (keyup.enter)="confirmMenuAction()"
+      (keyup.escape)="closeMenuModal()"
+      [disabled]="menuModalLoading"
+      autofocus
+    />
+    <div class="menu-modal-actions">
+      <button class="btn-cancel" (click)="closeMenuModal()" [disabled]="menuModalLoading">Cancelar</button>
+      <button class="btn-primary" (click)="confirmMenuAction()" [disabled]="!menuModalName.trim() || menuModalLoading">
+        <span class="btn-spinner" *ngIf="menuModalLoading"></span>
+        {{ menuModalMode === 'create' ? 'Crear' : 'Guardar' }}
+      </button>
+    </div>
+  </div>
+</div>

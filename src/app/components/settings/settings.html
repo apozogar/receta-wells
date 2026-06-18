@@ -1,0 +1,66 @@
+<header>
+  <h1>Ajustes</h1>
+</header>
+
+<div class="settings-grid">
+  <section class="card">
+    <h2>🍳 Cookidoo</h2>
+    <p class="desc">Credenciales para auto-login y añadir recetas a la lista de la compra.</p>
+    <label>
+      Email
+      <input type="email" [(ngModel)]="cookidooEmail" placeholder="tu@email.com" />
+    </label>
+    <label>
+      Contraseña
+      <input type="password" [(ngModel)]="cookidooPassword" placeholder="••••••••" />
+    </label>
+    <label>
+      País
+      <select [(ngModel)]="cookidooCountry">
+        <option value="es">España</option>
+        <option value="de">Alemania</option>
+        <option value="fr">Francia</option>
+        <option value="it">Italia</option>
+      </select>
+    </label>
+    <label>
+      Idioma
+      <select [(ngModel)]="cookidooLanguage">
+        <option value="es-ES">Español</option>
+        <option value="de-DE">Deutsch</option>
+        <option value="fr-FR">Français</option>
+        <option value="it-IT">Italiano</option>
+      </select>
+    </label>
+    <button (click)="testCookidoo()" class="btn-test" [disabled]="testingCookidoo">
+      {{ testingCookidoo ? 'Probando...' : '🔌 Probar conexión' }}
+    </button>
+    <p *ngIf="cookidooTestResult" class="test-result">{{ cookidooTestResult }}</p>
+  </section>
+
+  <section class="card">
+    <h2>🛍️ Mercadona</h2>
+    <p class="desc">Datos de sesión para añadir productos al carrito automáticamente.</p>
+    <label>
+      Almacén (wh)
+      <input [(ngModel)]="mercadonaWarehouse" placeholder="146" />
+    </label>
+    <label>
+      Customer UUID
+      <input [(ngModel)]="mercadonaCustomerUuid" placeholder="uuid-del-cliente" />
+    </label>
+    <label>
+      Access Token
+      <input [(ngModel)]="mercadonaAccessToken" placeholder="token-de-acceso" />
+    </label>
+    <p class="hint">
+      Para obtener estos datos: abre DevTools (F12) → Application → Local Storage →
+      MO-user → accessToken y customerUuid.
+    </p>
+  </section>
+</div>
+
+<div class="save-bar">
+  <button (click)="save()" class="btn-save">💾 Guardar ajustes</button>
+  <span *ngIf="saved" class="save-msg">✅ Guardado correctamente</span>
+</div>

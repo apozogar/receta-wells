@@ -1,20 +1,25 @@
-<header>
-    <h1>Receta Wells</h1>
-    <p>Thermomix • CrossFit • Déficit Calórico</p>
-</header>
+<div class="month-nav">
+    <button (click)="prevMonth()" class="btn-nav">◀</button>
+    <span class="month-title">{{ monthNames[currentMonth] }} {{ currentYear }}</span>
+    <button (click)="nextMonth()" class="btn-nav">▶</button>
+</div>
 
-<div class="controls">
-    <button (click)="generateCalendar()">🔄 Generar Nuevo Menú</button>
+<div *ngIf="loadError" class="load-error">{{ loadError }}</div>
+<div *ngIf="loading" class="loading">Cargando calendario…</div>
+
+<div class="nav-bar" *ngIf="!loading">
+    <button (click)="generateCalendar()">🔄 Generar</button>
     <button (click)="saveCalendar()">💾 Guardar</button>
-    <button (click)="loadSavedCalendar()">📂 Cargar</button>
+    <button (click)="loadCalendar()">📂 Cargar</button>
     <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
     <button (click)="addToShoppingList()" class="btn-success">🛒 Cookidoo</button>
+    <button (click)="addToMercadona()" class="btn-mercadona">🛍️ Mercadona</button>
 </div>
 
 <div class="calendar-container">
     <div *ngFor="let day of weekDays" class="day-header">{{ day }}</div>
     
-    <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'empty': day.isEmpty}">
+    <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'past': day.isPast, 'empty': day.isEmpty}">
         <ng-container *ngIf="!day.isEmpty">
             <div class="day-card-header">
                 <span class="mobile-day-name">{{ day.dayName }}</span>
@@ -22,32 +27,95 @@
             </div>
             
             <div class="meal lunch">
-                <ng-container *ngIf="editingDay !== day || editingSlot !== 'lunch'">
-                    <div (click)="startEdit(day, 'lunch')" class="meal-content">
-                        <strong>ALMUERZO</strong>
-                        {{ day.lunch?.name }} <br>
-                        <span *ngFor="let tag of day.lunch?.tags" class="tag">{{ tag }}</span>
-                    </div>
-                </ng-container>
-                <select *ngIf="editingDay === day && editingSlot === 'lunch'" [(ngModel)]="day.lunch" (change)="finishEdit()" class="meal-select">
-                    <option [ngValue]="r" *ngFor="let r of availableRecipesForSlot">{{ r.name }}</option>
-                </select>
+                <div (click)="!day.isPast && startEdit(day, 'lunch')" class="meal-content" [ngClass]="{'disabled': day.isPast}">
+                    <strong>ALMUERZO</strong>
+                    {{ day.lunch?.name }} <br>
+                    <span *ngFor="let tag of day.lunch?.tags" class="tag">{{ tag }}</span>
+                </div>
             </div>
 
             <div style="border-top: 1px dashed #eee; margin: 5px 0;"></div>
             
             <div class="meal dinner">
-                <ng-container *ngIf="editingDay !== day || editingSlot !== 'dinner'">
-                    <div (click)="startEdit(day, 'dinner')" class="meal-content">
-                        <strong>CENA</strong>
-                        {{ day.dinner?.name }} <br>
-                        <span *ngFor="let tag of day.dinner?.tags" class="tag">{{ tag }}</span>
-                    </div>
-                </ng-container>
-                <select *ngIf="editingDay === day && editingSlot === 'dinner'" [(ngModel)]="day.dinner" (change)="finishEdit()" class="meal-select">
-                    <option [ngValue]="r" *ngFor="let r of availableRecipesForSlot">{{ r.name }}</option>
-                </select>
+                <div (click)="!day.isPast && startEdit(day, 'dinner')" class="meal-content" [ngClass]="{'disabled': day.isPast}">
+                    <strong>CENA</strong>
+                    {{ day.dinner?.name }} <br>
+                    <span *ngFor="let tag of day.dinner?.tags" class="tag">{{ tag }}</span>
+                </div>
             </div>
         </ng-container>
     </div>
+</div>
+
+<div *ngIf="!loading && !loadError && calendarDays.length === 0" class="empty-state">
+    No hay datos para este mes. Pulsa "Generar" para crear un menú.
+</div>
+
+<!-- Modal selector de recetas -->
+<div class="modal-overlay" *ngIf="showRecipePicker" (click)="cancelEdit()">
+  <div class="modal-content recipe-picker" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="cancelEdit()">✕</button>
+    <h2>Elegir receta</h2>
+    <p class="picker-subtitle" *ngIf="editingDay && editingSlot">
+      {{ editingSlot === 'lunch' ? 'ALMUERZO' : 'CENA' }} — {{ editingDay.day }} de {{ monthNames[currentMonth] }} {{ currentYear }}
+    </p>
+
+    <div class="picker-groups">
+      <div *ngFor="let group of groupedRecipes" class="picker-group">
+        <h3 class="picker-group-title">{{ group.label }}</h3>
+        <div class="picker-recipes">
+          <div *ngFor="let r of group.recipes"
+               class="picker-recipe"
+               (click)="selectRecipe(r)">
+            <span class="picker-recipe-name">{{ r.name }}</span>
+            <span *ngFor="let tag of r.tags" class="tag">{{ tag }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary picker-btn" (click)="cancelEdit()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal de sincronización Cookidoo -->
+<div class="modal-overlay" *ngIf="showSyncModal" (click)="closeSyncModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="closeSyncModal()">✕</button>
+    <h2>Sincronizar con Cookidoo</h2>
+
+    <div *ngIf="syncLoading" class="modal-loading">Procesando…</div>
+
+    <div *ngIf="!syncLoading" class="modal-results">
+      <div *ngIf="syncError" class="sync-error">{{ syncError }}</div>
+
+      <div *ngIf="syncShoppingRecipes.length" class="sync-section">
+        <h3>🛒 Lista de la compra</h3>
+        <ul><li *ngFor="let r of syncShoppingRecipes">{{ r }}</li></ul>
+      </div>
+
+      <div *ngIf="syncAgendaItems.length" class="sync-section">
+        <h3>📅 Agenda de Thermomix</h3>
+        <ul><li *ngFor="let a of syncAgendaItems">{{ a.name }} <span class="sync-date">({{ a.date }})</span></li></ul>
+      </div>
+
+      <div *ngIf="syncSkippedRecipes.length" class="sync-section">
+        <h3>⚠️ Recetas omitidas</h3>
+        <ul><li *ngFor="let s of syncSkippedRecipes">{{ s.name }} — {{ s.reason }}</li></ul>
+      </div>
+
+      <div *ngIf="syncIngredients.length" class="sync-section">
+        <h3>🛍️ Ingredientes del mes</h3>
+        <ul class="ingredient-list">
+          <li *ngFor="let ing of syncIngredients">{{ ing.name }} <span class="sync-recipe">({{ ing.recipe_name }})</span></li>
+        </ul>
+      </div>
+
+      <div *ngIf="!syncShoppingRecipes.length && !syncAgendaItems.length && !syncSkippedRecipes.length && !syncIngredients.length && !syncError" class="sync-empty">
+        No hay recetas para sincronizar.
+      </div>
+    </div>
+
+    <button class="btn-primary modal-btn" (click)="closeSyncModal()">Cerrar</button>
+  </div>
 </div>

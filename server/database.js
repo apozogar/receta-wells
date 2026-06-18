@@ -1,69 +1,132 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./menu.db');
+const { Pool } = require('pg');
+const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
-db.serialize(() => {
-  // Crear tabla de recetas
-  db.run(`CREATE TABLE IF NOT EXISTS recipes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    type TEXT,
-    slot TEXT,
-    tags TEXT,
-    cookidooId TEXT
-  )`);
+const CONFIG_PATH = path.join(__dirname, '.auth_secret');
 
-  // Crear tabla de calendario (guardamos el menú generado por fecha)
-  db.run(`CREATE TABLE IF NOT EXISTS calendar (
-    day INTEGER,
-    month INTEGER,
-    year INTEGER,
-    lunch_recipe_id INTEGER,
-    dinner_recipe_id INTEGER,
-    PRIMARY KEY (day, month, year)
-  )`);
+function getJwtSecret() {
+  if (fs.existsSync(CONFIG_PATH)) {
+    return fs.readFileSync(CONFIG_PATH, 'utf-8').trim();
+  }
+  const secret = crypto.randomBytes(64).toString('hex');
+  fs.writeFileSync(CONFIG_PATH, secret, 'utf-8');
+  console.log('🔐 JWT_SECRET generado y guardado en .auth_secret');
+  return secret;
+}
+const JWT_SECRET = getJwtSecret();
 
-  // Insertar recetas iniciales (si está vacía)
-  db.get("SELECT count(*) as count FROM recipes", (err, row) => {
-    if (row.count === 0) {
-      const recipes = [
-        { name: "Lentejas estofadas con verduras", type: "legumbres", slot: "lunch", tags: "HP", cookidooId: "r255618" },
-        { name: "Garbanzos con espinacas y bacalao", type: "legumbres", slot: "lunch", tags: "HP", cookidooId: "" },
-        { name: "Alubias blancas con almejas", type: "legumbres", slot: "lunch", tags: "Bajo Grasa", cookidooId: "" },
-        { name: "Judías verdes + Huevo poché", type: "verduras", slot: "any", tags: "Cena Top", cookidooId: "" },
-        { name: "Crema de calabacín (con queso batido)", type: "verduras", slot: "any", tags: "Ligero", cookidooId: "" },
-        { name: "Menestra de verduras con jamón", type: "verduras", slot: "lunch", tags: "Vit", cookidooId: "" },
-        { name: "Dorada a la sal (Varoma)", type: "pescado", slot: "any", tags: "Clean", cookidooId: "" },
-        { name: "Merluza en salsa verde", type: "pescado", slot: "lunch", tags: "Prot", cookidooId: "" },
-        { name: "Salmón vapor + trigueros", type: "pescado", slot: "dinner", tags: "Grasas", cookidooId: "" },
-        { name: "Pasta integral boloñesa pavo", type: "pasta", slot: "lunch", tags: "Energía", cookidooId: "" },
-        { name: "Zoodles (Calabacín) con gambas", type: "pasta", slot: "dinner", tags: "Low Carb", cookidooId: "" },
-        { name: "Pollo al chilindrón", type: "carne", slot: "lunch", tags: "Clásico", cookidooId: "" },
-        { name: "Solomillo cerdo mostaza", type: "carne", slot: "lunch", tags: "Gourmet", cookidooId: "" },
-        { name: "Pavo estofado setas", type: "carne", slot: "any", tags: "Saciante", cookidooId: "" },
-        { name: "Huevos rellenos atún (sin mayo)", type: "cena", slot: "dinner", tags: "Rápido", cookidooId: "" },
-        { name: "Crema calabaza y jengibre", type: "cena", slot: "dinner", tags: "Detox", cookidooId: "" },
-        { name: "Mejillones vapor picadillo", type: "cena", slot: "dinner", tags: "Varoma", cookidooId: "" },
-        { name: "Tortilla francesa + Gazpacho", type: "cena", slot: "dinner", tags: "Express", cookidooId: "" },
-        { name: "Revuelto setas y gambas", type: "cena", slot: "dinner", tags: "Prot", cookidooId: "" },
-        { name: "Sepia plancha + Ensalada", type: "cena", slot: "dinner", tags: "Clean", cookidooId: "" },
-        { name: "Lentejas curry y pollo", type: "legumbres", slot: "lunch", tags: "Exótico", cookidooId: "" },
-        { name: "Vichyssoise ligera", type: "verduras", slot: "any", tags: "Clásico", cookidooId: "" },
-        { name: "Coliflor ajoarriero", type: "verduras", slot: "dinner", tags: "Low Carb", cookidooId: "" },
-        { name: "Marmitako de bonito", type: "pescado", slot: "lunch", tags: "Cuchara", cookidooId: "" },
-        { name: "Calamares en su tinta", type: "pescado", slot: "lunch", tags: "Tradición", cookidooId: "" },
-        { name: "Fideuá de marisco", type: "pasta", slot: "lunch", tags: "Top", cookidooId: "" },
-        { name: "Carrilladas vino tinto", type: "carne", slot: "lunch", tags: "Tierno", cookidooId: "" },
-        { name: "Pollo Tikka Masala", type: "carne", slot: "lunch", tags: "Especias", cookidooId: "" },
-        { name: "Sopa Juliana", type: "cena", slot: "dinner", tags: "Detox", cookidooId: "" },
-        { name: "Pastel calabacín y atún", type: "cena", slot: "dinner", tags: "Varoma", cookidooId: "" }
-      ];
-
-      const stmt = db.prepare("INSERT INTO recipes (name, type, slot, tags, cookidooId) VALUES (?, ?, ?, ?, ?)");
-      recipes.forEach(r => stmt.run(r.name, r.type, r.slot, r.tags, r.cookidooId));
-      stmt.finalize();
-      console.log("Recetas iniciales insertadas.");
-    }
-  });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:toor@localhost:5432/menubox',
 });
 
-module.exports = db;
+async function query(text, params) {
+  const result = await pool.query(text, params);
+  return result;
+}
+
+async function initDatabase() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS menus (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner_id INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_menus (
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      menu_id INTEGER NOT NULL REFERENCES menus(id),
+      role TEXT NOT NULL DEFAULT 'editor',
+      PRIMARY KEY (user_id, menu_id)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS recipes (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      slot TEXT NOT NULL,
+      tags TEXT DEFAULT '',
+      cookidooId TEXT DEFAULT '',
+      menu_id INTEGER DEFAULT 1
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS recipe_ingredients (
+      id SERIAL PRIMARY KEY,
+      recipe_id INTEGER NOT NULL REFERENCES recipes(id),
+      name TEXT NOT NULL,
+      category TEXT DEFAULT ''
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS calendar (
+      day INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      lunch_recipe_id INTEGER,
+      dinner_recipe_id INTEGER,
+      menu_id INTEGER DEFAULT 1,
+      UNIQUE(day, month, year, menu_id)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT NOT NULL,
+      value TEXT DEFAULT '',
+      menu_id INTEGER DEFAULT 1,
+      PRIMARY KEY (key, menu_id)
+    )
+  `);
+
+  // Admin por defecto
+  const existing = await query("SELECT id FROM users WHERE username = $1", ['admin']);
+  if (existing.rows.length === 0) {
+    const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync('admin123', 10);
+    const adminResult = await query(
+      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+      ['admin', 'admin@recetawells.app', hash]
+    );
+    const adminId = adminResult.rows[0].id;
+    console.log('👤 Usuario admin creado (admin / admin123)');
+
+    const menuResult = await query(
+      "INSERT INTO menus (name, owner_id) VALUES ($1, $2) RETURNING id",
+      ['Mi Menú', adminId]
+    );
+    const menuId = menuResult.rows[0].id;
+    await query(
+      "INSERT INTO user_menus (user_id, menu_id, role) VALUES ($1, $2, $3)",
+      [adminId, menuId, 'admin']
+    );
+    console.log('📋 Menú por defecto creado con id', menuId);
+  } else {
+    console.log('👤 Usuario admin ya existe (id:', existing.rows[0].id, ')');
+  }
+}
+
+initDatabase().catch(err => {
+  console.error('Error inicializando base de datos:', err.message);
+  process.exit(1);
+});
+
+module.exports = { query, pool };
+module.exports.JWT_SECRET = JWT_SECRET;
