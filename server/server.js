@@ -12,7 +12,19 @@ const JWT_SECRET = db.JWT_SECRET || process.env.JWT_SECRET || 'change-me';
 const app = express();
 const port = 3000;
 
-const seedRecipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'sql', 'recetas_base.json'), 'utf-8'));
+// Load seed recipes (safe fallback if file missing)
+let seedRecipes = [];
+try {
+  const seedPath = path.join(__dirname, 'sql', 'recetas_base.json');
+  if (fs.existsSync(seedPath)) {
+    seedRecipes = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+    console.log('Seed recipes loaded:', seedRecipes.length);
+  } else {
+    console.log('No seed file found at', seedPath);
+  }
+} catch (e) {
+  console.error('Error loading seed recipes:', e.message);
+}
 
 async function seedRecipesForMenu(menuId) {
   const client = await db.pool.connect();
