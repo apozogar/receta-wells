@@ -13,13 +13,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
-        fromDatabase:
-          name: menubox-db
-          property: connectionString
+        sync: false
       - key: PORT
         value: 10000
-
-databases:
-  - name: menubox-db
-    plan: free
-    region: frankfurt
