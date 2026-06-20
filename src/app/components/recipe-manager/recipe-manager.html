@@ -121,10 +121,11 @@
         <div class="import-list">
           <div class="import-group" *ngFor="let group of importResultsGrouped">
             <div class="import-group-header">{{ typeLabel(group.type) }}</div>
-            <label class="import-item" *ngFor="let r of group.items">
-              <input type="checkbox" [(ngModel)]="r.checked" />
+            <label class="import-item" *ngFor="let r of group.items" [class.already-imported]="r.alreadyImported">
+              <input type="checkbox" [(ngModel)]="r.checked" [disabled]="r.alreadyImported" />
               <span class="import-name">{{ r.name }}</span>
               <span class="import-id">{{ r.id }}</span>
+              <span class="import-status" *ngIf="r.alreadyImported">✓ Ya importada</span>
             </label>
           </div>
         </div>

@@ -148,8 +148,8 @@ export class RecipeManager implements OnInit {
   showImportModal = false;
   importLoading = false;
   importError = '';
-  importResults: { name: string; id: string; suggestedType: string; checked: boolean }[] = [];
-  importResultsGrouped: { type: string; items: { name: string; id: string; suggestedType: string; checked: boolean }[] }[] = [];
+  importResults: { name: string; id: string; suggestedType: string; checked: boolean; alreadyImported: boolean }[] = [];
+  importResultsGrouped: { type: string; items: { name: string; id: string; suggestedType: string; checked: boolean; alreadyImported: boolean }[] }[] = [];
   importing = false;
 
   openImportModal() {
@@ -160,11 +160,15 @@ export class RecipeManager implements OnInit {
     this.importResultsGrouped = [];
     
 
-    this.http.post<{ results: { name: string; id: string; suggestedType: string }[] }>(
+    this.http.post<{ results: { name: string; id: string; suggestedType: string; alreadyImported?: boolean }[] }>(
       '/api/cookidoo/predefined', {},
     ).subscribe({
       next: (res) => {
-        this.importResults = res.results.map((r: { name: string; id: string; suggestedType: string }) => ({ ...r, checked: true }));
+        this.importResults = res.results.map(r => ({
+          ...r,
+          alreadyImported: r.alreadyImported || false,
+          checked: !r.alreadyImported,
+        }));
         this.groupImportResults();
         this.importLoading = false;
         
@@ -207,15 +211,15 @@ export class RecipeManager implements OnInit {
   }
 
   toggleImportAll(checked: boolean) {
-    this.importResults.forEach(r => r.checked = checked);
+    this.importResults.forEach(r => { if (!r.alreadyImported) r.checked = checked; });
   }
 
   selectedImportCount(): number {
-    return this.importResults.filter(r => r.checked).length;
+    return this.importResults.filter(r => r.checked && !r.alreadyImported).length;
   }
 
   importSelected() {
-    const selected = this.importResults.filter(r => r.checked);
+    const selected = this.importResults.filter(r => r.checked && !r.alreadyImported);
     if (selected.length === 0) return;
 
     this.importing = true;
@@ -223,6 +227,7 @@ export class RecipeManager implements OnInit {
 
     const menuId = this.auth.getCurrentMenuId();
     let completed = 0;
+    let skipped = 0;
 
     for (const r of selected) {
       const recipeData = {
@@ -236,24 +241,30 @@ export class RecipeManager implements OnInit {
       this.menuService.createRecipe(recipeData).subscribe({
         next: () => {
           completed++;
-          if (completed === selected.length) {
-            this.importing = false;
-            this.closeImportModal();
-            this.toast.success(`${completed} recetas importadas`);
-            this.loadRecipes();
-          }
+          this.checkImportDone(completed + skipped, selected.length, skipped);
         },
         error: (e) => {
-          completed++;
+          skipped++;
           console.error('Error importing recipe:', r.name, e);
-          if (completed === selected.length) {
-            this.importing = false;
-            this.closeImportModal();
-            this.toast.success(`${completed} recetas importadas`);
-            this.loadRecipes();
-          }
+          this.checkImportDone(completed + skipped, selected.length, skipped);
         },
       });
+    }
+  }
+
+  private checkImportDone(total: number, totalSelected: number, skipped: number) {
+    if (total >= totalSelected) {
+      this.importing = false;
+      this.closeImportModal();
+      const imported = total - skipped;
+      if (skipped > 0 && imported > 0) {
+        this.toast.success(`${imported} recetas importadas (${skipped} ya existían)`);
+      } else if (imported > 0) {
+        this.toast.success(`${imported} recetas importadas`);
+      } else {
+        this.toast.info('Todas las recetas ya estaban importadas');
+      }
+      this.loadRecipes();
     }
   }
 

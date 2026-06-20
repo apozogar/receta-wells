@@ -243,6 +243,15 @@ app.post('/api/recipes', authMiddleware, async (req, res) => {
   }
   const menuId = req.body.menuId || parseInt(req.query.menuId) || 1;
   try {
+    if (cookidooId) {
+      const { rows: existing } = await query(
+        "SELECT id FROM recipes WHERE cookidooId = $1 AND menu_id = $2",
+        [cookidooId, menuId]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ error: 'Esta receta ya está importada en este menú', id: existing[0].id });
+      }
+    }
     const tagsStr = Array.isArray(tags) ? tags.join(',') : (tags || '');
     const { rows } = await query(
       "INSERT INTO recipes (name, type, slot, tags, cookidooId, menu_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
@@ -346,10 +355,12 @@ app.post('/api/menu/generate-ai', authMiddleware, async (req, res) => {
   }
 
   try {
-    const settings = await getSettings(['gemini_api_key']);
-    const apiKey = settings.gemini_api_key;
-    if (!apiKey) {
-      return res.status(400).json({ error: 'Configura tu API Key de Gemini en Ajustes' });
+    const settings = await getSettings(['gemini_api_key', 'groq_api_key']);
+    const geminiKey = settings.gemini_api_key;
+    const groqKey = settings.groq_api_key;
+
+    if (!geminiKey && !groqKey) {
+      return res.status(400).json({ error: 'Configura al menos una API Key de IA en Ajustes (Gemini o Groq)' });
     }
 
     const { rows: recipes } = await query(
@@ -361,21 +372,30 @@ app.post('/api/menu/generate-ai', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'No hay recetas en este menú. Crea algunas primero.' });
     }
 
-    const compactRecipe = (r) => `${r.id}:"${r.name}"(${r.type},${r.slot}${r.tags?','+r.tags:''})`;
-    const recipesList = recipes.map(compactRecipe).join('; ');
+    // Group recipes by type for compact prompt (saves tokens)
+    const recipesByType = new Map();
+    for (const r of recipes) {
+      if (!recipesByType.has(r.type)) recipesByType.set(r.type, []);
+      recipesByType.get(r.type).push(r.id);
+    }
+    let recipesList = '';
+    for (const [type, ids] of recipesByType) {
+      recipesList += `${type}: ${ids.join(',')}\n`;
+    }
+    recipesList = recipesList.trim();
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = startDay || 1;
     const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const dayAbbr = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
     const dayRules = {
-      0: { l: 'arroz', n: 'cena' },      // Dom
-      1: { l: 'legumbres', n: 'cena' },  // Lun
-      2: { l: 'verduras', n: 'cena' },   // Mar
-      3: { l: 'pescado', n: 'cena' },    // Mie
-      4: { l: 'pasta', n: 'cena' },      // Jue
-      5: { l: 'carne', n: 'libre' },     // Vie
-      6: { l: 'libre', n: 'libre' },     // Sab
+      0: { l: 'arroz', n: 'cena' },
+      1: { l: 'legumbres', n: 'cena' },
+      2: { l: 'verduras', n: 'cena' },
+      3: { l: 'pescado', n: 'cena' },
+      4: { l: 'pasta', n: 'cena' },
+      5: { l: 'carne', n: 'libre' },
+      6: { l: 'libre', n: 'libre' },
     };
 
     let calendarRules = '';
@@ -397,78 +417,120 @@ Reglas: no repetir receta misma semana, alternar sub-tipos, cenas ligeras, respe
 Responde solo esto, sin markdown ni backticks:
 [{"d":${firstDay},"l":ID,"n":ID},...]`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-        }),
+    // Helper: parse AI text response and normalize
+    const parseResponse = (text, provider) => {
+      if (!text) return { error: provider + ' devolvió respuesta vacía' };
+      let jsonStr = '';
+      const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (mdMatch) {
+        jsonStr = mdMatch[1].trim();
+      } else {
+        const arrMatch = text.match(/\[[\s\S]*\]/);
+        jsonStr = arrMatch ? arrMatch[0] : '';
       }
-    );
+      if (!jsonStr) return { error: provider + ' no devolvió JSON válido' };
+      try {
+        const raw = JSON.parse(jsonStr);
+        if (!Array.isArray(raw)) return { error: 'Formato inesperado (no es array)' };
+        return {
+          days: raw.map(e => ({
+            day: e.d || e.day,
+            lunchId: e.l || e.lunchId,
+            dinnerId: e.n || e.dinnerId,
+          })),
+        };
+      } catch {
+        return { error: 'JSON mal formado de ' + provider };
+      }
+    };
 
-    const data = await response.json();
+    // Try Gemini first
+    if (geminiKey) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+            }),
+          }
+        );
 
-    if (response.status === 429) {
-      const detail = data?.error?.message || 'rate limit';
-      return res.status(429).json({ error: 'Límite Gemini: ' + detail });
+        const geminiData = await geminiRes.json();
+
+        if (geminiRes.ok) {
+          const candidate = geminiData?.candidates?.[0];
+          const finishReason = candidate?.finishReason || 'UNKNOWN';
+          const parts = candidate?.content?.parts || [];
+          const text = parts.map(p => p.text || '').join('');
+          console.log('[Gemini] finishReason:', finishReason, 'textLen:', text.length);
+
+          if (finishReason === 'MAX_TOKENS') {
+            console.log('[Gemini] Truncado por tokens, intentando Groq...');
+          } else if (text) {
+            const result = parseResponse(text, 'Gemini');
+            if (result.days) {
+              return res.json({ days: result.days, month, year, provider: 'gemini' });
+            }
+            console.log('[Gemini] Parse error, intentando Groq...');
+          }
+        } else {
+          console.log('[Gemini] HTTP', geminiRes.status, 'intentando Groq...');
+        }
+      } catch (e) {
+        console.log('[Gemini] Error de red, intentando Groq:', e.message);
+      }
     }
 
-    if (!response.ok) {
-      const errMsg = data?.error?.message || `HTTP ${response.status}`;
-      return res.status(502).json({ error: 'Error Gemini: ' + errMsg });
+    // Fallback: Groq
+    if (groqKey) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'Eres un nutricionista. Responde ÚNICAMENTE con un array JSON válido, sin explicaciones, sin markdown, sin backticks. Nada de texto fuera del JSON. Solo el array.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 8192,
+          }),
+        });
+
+        if (groqRes.ok) {
+          const groqData = await groqRes.json();
+          const text = groqData?.choices?.[0]?.message?.content || '';
+          const finishReason = groqData?.choices?.[0]?.finish_reason || '';
+          console.log('[Groq] finishReason:', finishReason, 'textLen:', text.length);
+          console.log('[Groq] text preview:', text.slice(0, 300));
+
+          const result = parseResponse(text, 'Groq');
+          if (result.days) {
+            return res.json({ days: result.days, month, year, provider: 'groq' });
+          }
+          return res.status(500).json({ error: result.error });
+        }
+
+        if (groqRes.status === 429) {
+          return res.status(429).json({ error: 'Límite de Groq alcanzado. Espera unos segundos.' });
+        }
+
+        const groqErr = await groqRes.json().catch(() => ({}));
+        return res.status(502).json({ error: 'Error Groq: ' + (groqErr?.error?.message || `HTTP ${groqRes.status}`) });
+      } catch (e) {
+        return res.status(500).json({ error: 'Error de red Groq: ' + e.message });
+      }
     }
 
-    const candidate = data?.candidates?.[0];
-    const finishReason = candidate?.finishReason || 'UNKNOWN';
-    const parts = candidate?.content?.parts || [];
-    const text = parts.map(p => p.text || '').join('');
-
-    console.log('[Gemini] finishReason:', finishReason, 'parts:', parts.length, 'textLen:', text.length);
-
-    if (!text) {
-      return res.status(500).json({ error: 'Gemini devolvió respuesta vacía (finishReason: ' + finishReason + ')' });
-    }
-
-    if (finishReason === 'MAX_TOKENS') {
-      return res.status(500).json({ error: 'Respuesta truncada por límite de tokens. Reduce el número de recetas o el mes.' });
-    }
-
-    let jsonStr = '';
-    const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (mdMatch) {
-      jsonStr = mdMatch[1].trim();
-    } else {
-      const arrMatch = text.match(/\[[\s\S]*\]/);
-      jsonStr = arrMatch ? arrMatch[0] : '';
-    }
-
-    if (!jsonStr) {
-      console.error('[Gemini] No JSON. Raw text (primeros 1000):', text.slice(0, 1000));
-      return res.status(500).json({ error: 'La IA no devolvió JSON válido. Inténtalo de nuevo.' });
-    }
-
-    let raw;
-    try {
-      raw = JSON.parse(jsonStr);
-    } catch {
-      console.error('[Gemini] JSON parse error. Text:', jsonStr.slice(0, 1000));
-      return res.status(500).json({ error: 'JSON mal formado. Inténtalo de nuevo.' });
-    }
-
-    if (!Array.isArray(raw)) {
-      return res.status(500).json({ error: 'Formato inesperado (no es array).' });
-    }
-
-    const days = raw.map(e => ({
-      day: e.d || e.day,
-      lunchId: e.l || e.lunchId,
-      dinnerId: e.n || e.dinnerId,
-    }));
-
-    res.json({ days, month, year });
+    return res.status(500).json({ error: 'No se pudo generar el menú con ningún proveedor. Revisa las API keys.' });
   } catch (e) {
     res.status(500).json({ error: 'Error: ' + e.message });
   }
@@ -816,6 +878,18 @@ app.post('/api/cookidoo/predefined', async (req, res) => {
 
     const allResults = [];
     const seenIds = new Set();
+    const seenNames = new Set();
+
+    // Normalize name for similarity comparison
+    const normalize = (s) => {
+      return (s || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+        .replace(/[^a-z0-9áéíóúñü]/g, ' ')               // solo letras/num + espacio
+        .replace(/\s+/g, ' ')                             // normaliza espacios
+        .replace(/\(.*?\)/g, '')                          // quita paréntesis
+        .trim();
+    };
 
     for (const s of searches) {
       try {
@@ -830,10 +904,13 @@ app.post('/api/cookidoo/predefined', async (req, res) => {
         const body = await apiRes.json();
         const hits = body.data || body.recipes || [];
         for (const item of hits) {
-          if (!seenIds.has(item.id)) {
+          const name = item.title || item.name || '';
+          const norm = normalize(name);
+          if (!seenIds.has(item.id) && !seenNames.has(norm)) {
             seenIds.add(item.id);
+            seenNames.add(norm);
             allResults.push({
-              name: item.title || item.name || '—',
+              name: name || '—',
               id: item.id,
               suggestedType: s.type,
             });
@@ -844,7 +921,24 @@ app.post('/api/cookidoo/predefined', async (req, res) => {
       }
     }
 
-    res.json({ results: allResults });
+    // Filter out already-imported recipes
+    const cookidooIds = allResults.map(r => r.id).filter(Boolean);
+    if (cookidooIds.length > 0) {
+      const menuId = parseInt(req.query.menuId) || 1;
+      const { rows: existing } = await query(
+        `SELECT cookidooId FROM recipes WHERE cookidooId = ANY($1) AND menu_id = $2`,
+        [cookidooIds, menuId]
+      );
+      const existingIds = new Set(existing.map(r => r.cookidooid));
+      res.json({
+        results: allResults.map(r => ({
+          ...r,
+          alreadyImported: existingIds.has(r.id),
+        })),
+      });
+    } else {
+      res.json({ results: allResults });
+    }
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

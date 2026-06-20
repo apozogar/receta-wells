@@ -18,6 +18,7 @@ export class Settings implements OnInit {
   cookidooLanguage = 'es-ES';
   mercadonaWarehouse = '146';
   geminiApiKey = '';
+  groqApiKey = '';
   mercadonaCustomerUuid = '';
   mercadonaAccessToken = '';
 
@@ -38,6 +39,7 @@ export class Settings implements OnInit {
       this.cookidooLanguage = settings['cookidoo_language'] || 'es-ES';
       this.mercadonaWarehouse = settings['mercadona_warehouse'] || '146';
       this.geminiApiKey = settings['gemini_api_key'] || '';
+      this.groqApiKey = settings['groq_api_key'] || '';
       this.mercadonaCustomerUuid = settings['mercadona_customer_uuid'] || '';
       this.mercadonaAccessToken = settings['mercadona_access_token'] || '';
     });
@@ -50,6 +52,7 @@ export class Settings implements OnInit {
       { key: 'cookidoo_country', value: this.cookidooCountry },
       { key: 'cookidoo_language', value: this.cookidooLanguage },
       { key: 'gemini_api_key', value: this.geminiApiKey },
+      { key: 'groq_api_key', value: this.groqApiKey },
       { key: 'mercadona_warehouse', value: this.mercadonaWarehouse },
       { key: 'mercadona_customer_uuid', value: this.mercadonaCustomerUuid },
       { key: 'mercadona_access_token', value: this.mercadonaAccessToken },
