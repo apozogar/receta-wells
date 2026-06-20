@@ -1,4 +1,4 @@
-<div class="modal-overlay" (click)="cancel()">
+<div class="modal-overlay" *ngIf="show" (click)="cancel()">
   <div class="modal-content confirm-modal" (click)="$event.stopPropagation()">
     <h2>{{ message }}</h2>
     <div class="confirm-modal-actions">

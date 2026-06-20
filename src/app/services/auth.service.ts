@@ -114,7 +114,9 @@ export class AuthService {
       if (menus.length > 0 && !menus.find(m => m.id === currentId)) {
         this.setCurrentMenu(menus[0].id);
       }
-    } catch {}
+    } catch {
+      this.ngZone.run(() => this.menusSubject.next([]));
+    }
   }
 
   setCurrentMenu(menuId: number) {
@@ -156,6 +158,9 @@ export class AuthService {
         const updated = this.menusSubject.value.filter(m => m.id !== id);
         if (updated.length > 0) {
           this.setCurrentMenu(updated[0].id);
+        } else {
+          localStorage.removeItem('currentMenuId');
+          this.ngZone.run(() => this.currentMenuIdSubject.next(0));
         }
       }
       await this.loadMenus();

@@ -12,6 +12,12 @@ export interface CalendarEntry {
   dinnerId: number | null;
 }
 
+export interface AiMenuResponse {
+  days: CalendarEntry[];
+  month: number;
+  year: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -72,5 +78,13 @@ export class MenuService {
 
   saveSettingsBatch(entries: { key: string; value: string }[]): Observable<any> {
     return this.http.put(`${this.apiUrl}/settings/batch`, entries);
+  }
+
+  generateAiMenu(month: number, year: number): Observable<AiMenuResponse> {
+    return this.http.post<AiMenuResponse>(`${this.apiUrl}/menu/generate-ai`, { month, year }).pipe(timeout(120000));
+  }
+
+  generateAiMenuFrom(month: number, year: number, startDay: number): Observable<AiMenuResponse> {
+    return this.http.post<AiMenuResponse>(`${this.apiUrl}/menu/generate-ai`, { month, year, startDay }).pipe(timeout(120000));
   }
 }

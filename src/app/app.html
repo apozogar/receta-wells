@@ -2,14 +2,14 @@
   <!-- Mobile header -->
   <div class="mobile-header" *ngIf="user && !isLoginPage()">
     <span class="mobile-brand">MenuBox</span>
-    <div class="menu-dropdown mobile" *ngIf="menus.length > 0">
+    <div class="menu-dropdown mobile">
       <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
         <span>📋</span>
-        <span class="menu-toggle-label">{{ currentMenuName }}</span>
+        <span class="menu-toggle-label">{{ menus.length === 0 ? 'Sin menú' : currentMenuName }}</span>
         <span class="menu-toggle-arrow">▼</span>
       </button>
       <div class="menu-dropdown-panel" *ngIf="showMenuDropdown">
-        <div class="menu-dropdown-items">
+        <div class="menu-dropdown-items" *ngIf="menus.length > 0">
           <button *ngFor="let m of menus"
                   class="menu-dropdown-item"
                   [class.active]="m.id === currentMenuId"
@@ -20,6 +20,9 @@
               <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
             </span>
           </button>
+        </div>
+        <div class="menu-dropdown-empty" *ngIf="menus.length === 0">
+          No tienes menús todavía.
         </div>
         <div class="menu-dropdown-divider"></div>
         <button class="menu-dropdown-create" (click)="openCreateMenu()">＋ Nuevo menú</button>
@@ -38,13 +41,13 @@
       <span class="sidebar-subtitle">Planificador de comidas</span>
     </div>
 
-    <div class="menu-dropdown desktop" *ngIf="menus.length > 0">
+    <div class="menu-dropdown desktop">
       <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
-        <span class="menu-toggle-label">{{ currentMenuName }}</span>
+        <span class="menu-toggle-label">{{ menus.length === 0 ? 'Sin menú — Crear uno' : currentMenuName }}</span>
         <span class="menu-toggle-arrow">▼</span>
       </button>
       <div class="menu-dropdown-panel" *ngIf="showMenuDropdown">
-        <div class="menu-dropdown-items">
+        <div class="menu-dropdown-items" *ngIf="menus.length > 0">
           <button *ngFor="let m of menus"
                   class="menu-dropdown-item"
                   [class.active]="m.id === currentMenuId"
@@ -55,6 +58,9 @@
               <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
             </span>
           </button>
+        </div>
+        <div class="menu-dropdown-empty" *ngIf="menus.length === 0">
+          No tienes menús todavía.
         </div>
         <div class="menu-dropdown-divider"></div>
         <button class="menu-dropdown-create" (click)="openCreateMenu()">＋ Nuevo menú</button>

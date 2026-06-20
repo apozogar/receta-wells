@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -17,6 +17,7 @@ export class Settings implements OnInit {
   cookidooCountry = 'es';
   cookidooLanguage = 'es-ES';
   mercadonaWarehouse = '146';
+  geminiApiKey = '';
   mercadonaCustomerUuid = '';
   mercadonaAccessToken = '';
 
@@ -27,7 +28,6 @@ export class Settings implements OnInit {
   constructor(
     private menuService: MenuService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
@@ -37,6 +37,7 @@ export class Settings implements OnInit {
       this.cookidooCountry = settings['cookidoo_country'] || 'es';
       this.cookidooLanguage = settings['cookidoo_language'] || 'es-ES';
       this.mercadonaWarehouse = settings['mercadona_warehouse'] || '146';
+      this.geminiApiKey = settings['gemini_api_key'] || '';
       this.mercadonaCustomerUuid = settings['mercadona_customer_uuid'] || '';
       this.mercadonaAccessToken = settings['mercadona_access_token'] || '';
     });
@@ -48,6 +49,7 @@ export class Settings implements OnInit {
       { key: 'cookidoo_password', value: this.cookidooPassword },
       { key: 'cookidoo_country', value: this.cookidooCountry },
       { key: 'cookidoo_language', value: this.cookidooLanguage },
+      { key: 'gemini_api_key', value: this.geminiApiKey },
       { key: 'mercadona_warehouse', value: this.mercadonaWarehouse },
       { key: 'mercadona_customer_uuid', value: this.mercadonaCustomerUuid },
       { key: 'mercadona_access_token', value: this.mercadonaAccessToken },
@@ -80,13 +82,13 @@ export class Settings implements OnInit {
   private done(result: string) {
     this.cookidooTestResult = result;
     this.testingCookidoo = false;
-    this.cdr.detectChanges();
+    
   }
 
   testCookidoo() {
     this.testingCookidoo = true;
     this.cookidooTestResult = null;
-    this.cdr.detectChanges();
+    
 
     this.http.post<{ ok: boolean }>('/api/cookidoo/login', {
       email: this.cookidooEmail,

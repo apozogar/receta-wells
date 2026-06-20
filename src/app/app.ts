@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -35,7 +35,6 @@ export class App implements OnInit {
   constructor(
     private auth: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef,
     private toast: ToastService,
     private confirm: ConfirmService,
   ) {}
@@ -43,15 +42,12 @@ export class App implements OnInit {
   ngOnInit() {
     this.auth.user$.subscribe(u => {
       this.user = u;
-      this.cdr.detectChanges();
     });
     this.auth.menus$.subscribe(m => {
       this.menus = m;
-      this.cdr.detectChanges();
     });
     this.auth.currentMenuId$.subscribe(id => {
       this.currentMenuId = id;
-      this.cdr.detectChanges();
     });
     if (this.auth.isLoggedIn()) {
       this.auth.loadMenus();

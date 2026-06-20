@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ConfirmService, ConfirmRequest } from '../../services/confirm.service';
@@ -17,7 +17,6 @@ export class ConfirmModal implements OnInit, OnDestroy {
 
   constructor(
     private confirmService: ConfirmService,
-    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
@@ -25,7 +24,7 @@ export class ConfirmModal implements OnInit, OnDestroy {
       this.message = req.message;
       this.currentResolve = req.resolve;
       this.show = true;
-      this.cdr.detectChanges();
+      
     });
   }
 
@@ -36,12 +35,12 @@ export class ConfirmModal implements OnInit, OnDestroy {
   confirm() {
     this.show = false;
     this.currentResolve?.(true);
-    this.cdr.detectChanges();
+    
   }
 
   cancel() {
     this.show = false;
     this.currentResolve?.(false);
-    this.cdr.detectChanges();
+    
   }
 }

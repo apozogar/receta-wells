@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -22,7 +22,6 @@ export class Login {
   constructor(
     private auth: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef,
   ) {
     if (this.auth.isLoggedIn()) {
       this.router.navigate(['/']);
@@ -38,24 +37,24 @@ export class Login {
     this.error = '';
     if (!this.username || !this.password) {
       this.error = 'Completa todos los campos';
-      this.cdr.detectChanges();
+      
       return;
     }
     if (this.isRegister) {
       if (this.password !== this.confirmPassword) {
         this.error = 'Las contraseñas no coinciden';
-        this.cdr.detectChanges();
+        
         return;
       }
       if (!this.email) {
         this.error = 'El email es obligatorio';
-        this.cdr.detectChanges();
+        
         return;
       }
     }
 
     this.loading = true;
-    this.cdr.detectChanges();
+    
     const result = this.isRegister
       ? await this.auth.register(this.username, this.email, this.password)
       : await this.auth.login(this.username, this.password);
@@ -66,6 +65,6 @@ export class Login {
     } else {
       this.error = result.error || 'Error desconocido';
     }
-    this.cdr.detectChanges();
+    
   }
 }

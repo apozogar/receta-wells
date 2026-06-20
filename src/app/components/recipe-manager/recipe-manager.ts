@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MenuService } from '../../services/menu.service';
@@ -35,7 +35,7 @@ export class RecipeManager implements OnInit {
   searchResults: { name: string; id: string }[] = [];
   searching = false;
 
-  readonly typeOptions = ['legumbres', 'verduras', 'pescado', 'pasta', 'carne', 'cena'];
+  readonly typeOptions = ['legumbres', 'verduras', 'pescado', 'pasta', 'carne', 'arroz', 'cena'];
   readonly slotOptions: { value: Recipe['slot']; label: string }[] = [
     { value: 'any', label: 'Cualquiera' },
     { value: 'lunch', label: 'Solo comida' },
@@ -46,7 +46,6 @@ export class RecipeManager implements OnInit {
     private menuService: MenuService,
     private auth: AuthService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef,
     private toast: ToastService,
     private confirmSvc: ConfirmService,
   ) {}
@@ -63,20 +62,20 @@ export class RecipeManager implements OnInit {
 
   loadRecipes() {
     this.loading = true;
-    this.cdr.detectChanges();
+    
     console.log('RecipeManager: fetching recipes...');
     this.http.get<Recipe[]>('/api/recipes').subscribe({
       next: (recipes) => {
         console.log('RecipeManager: recipes received', recipes?.length);
         this.recipes = recipes;
         this.loading = false;
-        this.cdr.detectChanges();
+        
       },
       error: (e) => {
         console.error('RecipeManager: error fetching recipes', e);
         this.errorMessage = 'Error: ' + (e.message || e.status || 'conexión');
         this.loading = false;
-        this.cdr.detectChanges();
+        
       },
     });
   }
@@ -123,18 +122,18 @@ export class RecipeManager implements OnInit {
     if (!q) return;
     this.searching = true;
     this.searchResults = [];
-    this.cdr.detectChanges();
+    
     this.http.get<{ results: { name: string; id: string }[] }>(
       `/api/cookidoo/search?q=${encodeURIComponent(q)}`,
     ).subscribe({
       next: (res) => {
         this.searchResults = res.results;
         this.searching = false;
-        this.cdr.detectChanges();
+        
       },
       error: () => {
         this.searching = false;
-        this.cdr.detectChanges();
+        
       },
     });
   }
@@ -143,6 +142,119 @@ export class RecipeManager implements OnInit {
     this.form.cookidooId = r.id;
     this.form.name = r.name;
     this.searchResults = [];
+  }
+
+  // Importar recetas predefinidas desde Cookidoo
+  showImportModal = false;
+  importLoading = false;
+  importError = '';
+  importResults: { name: string; id: string; suggestedType: string; checked: boolean }[] = [];
+  importResultsGrouped: { type: string; items: { name: string; id: string; suggestedType: string; checked: boolean }[] }[] = [];
+  importing = false;
+
+  openImportModal() {
+    this.showImportModal = true;
+    this.importLoading = true;
+    this.importError = '';
+    this.importResults = [];
+    this.importResultsGrouped = [];
+    
+
+    this.http.post<{ results: { name: string; id: string; suggestedType: string }[] }>(
+      '/api/cookidoo/predefined', {},
+    ).subscribe({
+      next: (res) => {
+        this.importResults = res.results.map((r: { name: string; id: string; suggestedType: string }) => ({ ...r, checked: true }));
+        this.groupImportResults();
+        this.importLoading = false;
+        
+      },
+      error: (e) => {
+        this.importError = e.error?.error || e.message || 'Error al conectar con Cookidoo';
+        this.importLoading = false;
+        
+      },
+    });
+  }
+
+  private groupImportResults() {
+    const groups = new Map<string, typeof this.importResults>();
+    for (const r of this.importResults) {
+      const key = r.suggestedType;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    }
+    this.importResultsGrouped = Array.from(groups.entries()).map(([type, items]) => ({ type, items }));
+  }
+
+  typeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      legumbres: 'Legumbres',
+      verduras: 'Verduras',
+      pescado: 'Pescado',
+      pasta: 'Pasta',
+      carne: 'Carne',
+      cena: 'Cena / Rápida',
+      arroz: 'Arroz',
+    };
+    return labels[type] || type;
+  }
+
+  closeImportModal() {
+    this.showImportModal = false;
+    this.importResults = [];
+    this.importError = '';
+  }
+
+  toggleImportAll(checked: boolean) {
+    this.importResults.forEach(r => r.checked = checked);
+  }
+
+  selectedImportCount(): number {
+    return this.importResults.filter(r => r.checked).length;
+  }
+
+  importSelected() {
+    const selected = this.importResults.filter(r => r.checked);
+    if (selected.length === 0) return;
+
+    this.importing = true;
+    
+
+    const menuId = this.auth.getCurrentMenuId();
+    let completed = 0;
+
+    for (const r of selected) {
+      const recipeData = {
+        name: r.name,
+        type: r.suggestedType,
+        slot: 'any' as const,
+        tags: [] as string[],
+        cookidooId: r.id,
+        menuId,
+      };
+      this.menuService.createRecipe(recipeData).subscribe({
+        next: () => {
+          completed++;
+          if (completed === selected.length) {
+            this.importing = false;
+            this.closeImportModal();
+            this.toast.success(`${completed} recetas importadas`);
+            this.loadRecipes();
+          }
+        },
+        error: (e) => {
+          completed++;
+          console.error('Error importing recipe:', r.name, e);
+          if (completed === selected.length) {
+            this.importing = false;
+            this.closeImportModal();
+            this.toast.success(`${completed} recetas importadas`);
+            this.loadRecipes();
+          }
+        },
+      });
+    }
   }
 
   save() {

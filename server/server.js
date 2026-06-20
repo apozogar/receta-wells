@@ -12,6 +12,27 @@ const JWT_SECRET = db.JWT_SECRET || process.env.JWT_SECRET || 'change-me';
 const app = express();
 const port = 3000;
 
+const seedRecipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'sql', 'recetas_base.json'), 'utf-8'));
+
+async function seedRecipesForMenu(menuId) {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const r of seedRecipes) {
+      await client.query(
+        "INSERT INTO recipes (name, type, slot, tags, cookidooId, menu_id) VALUES ($1, $2, $3, $4, $5, $6)",
+        [r.name, r.type, r.slot, r.tags, r.cookidooId, menuId]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('Error seeding recipes for menu', menuId, e.message);
+  } finally {
+    client.release();
+  }
+}
+
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -67,6 +88,8 @@ app.post('/api/auth/register', async (req, res) => {
       "INSERT INTO user_menus (user_id, menu_id, role) VALUES ($1, $2, $3)",
       [userId, menuId, 'admin']
     );
+
+    seedRecipesForMenu(menuId);
 
     const token = jwt.sign({ userId, username, email }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: userId, username, email }, menuId });
@@ -148,6 +171,7 @@ app.post('/api/menus', authMiddleware, async (req, res) => {
       "INSERT INTO user_menus (user_id, menu_id, role) VALUES ($1, $2, $3)",
       [req.user.userId, menuId, 'admin']
     );
+    seedRecipesForMenu(menuId);
     res.json({ id: menuId, name, owner_id: req.user.userId });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -204,7 +228,7 @@ app.get('/api/recipes', optionalAuth, async (req, res) => {
       "SELECT * FROM recipes WHERE menu_id = $1 ORDER BY name",
       [menuId]
     );
-    const recipes = rows.map(r => ({ ...r, tags: r.tags ? r.tags.split(',') : [] }));
+    const recipes = rows.map(r => ({ ...r, tags: r.tags ? r.tags.split(',') : [], cookidooId: r.cookidooid || '' }));
     res.json(recipes);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -308,6 +332,145 @@ app.post('/api/calendar', authMiddleware, async (req, res) => {
     res.status(500).json({ error: e.message });
   } finally {
     client.release();
+  }
+});
+
+// === GENERACIÓN IA (Gemini) ===
+
+app.post('/api/menu/generate-ai', authMiddleware, async (req, res) => {
+  const { month, year, startDay } = req.body;
+  const menuId = parseInt(req.query.menuId) || 1;
+
+  if (month == null || year == null) {
+    return res.status(400).json({ error: 'Faltan month y year' });
+  }
+
+  try {
+    const settings = await getSettings(['gemini_api_key']);
+    const apiKey = settings.gemini_api_key;
+    if (!apiKey) {
+      return res.status(400).json({ error: 'Configura tu API Key de Gemini en Ajustes' });
+    }
+
+    const { rows: recipes } = await query(
+      "SELECT id, name, type, slot, tags FROM recipes WHERE menu_id = $1 ORDER BY type, name",
+      [menuId]
+    );
+
+    if (recipes.length === 0) {
+      return res.status(400).json({ error: 'No hay recetas en este menú. Crea algunas primero.' });
+    }
+
+    const compactRecipe = (r) => `${r.id}:"${r.name}"(${r.type},${r.slot}${r.tags?','+r.tags:''})`;
+    const recipesList = recipes.map(compactRecipe).join('; ');
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = startDay || 1;
+    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const dayAbbr = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+    const dayRules = {
+      0: { l: 'arroz', n: 'cena' },      // Dom
+      1: { l: 'legumbres', n: 'cena' },  // Lun
+      2: { l: 'verduras', n: 'cena' },   // Mar
+      3: { l: 'pescado', n: 'cena' },    // Mie
+      4: { l: 'pasta', n: 'cena' },      // Jue
+      5: { l: 'carne', n: 'libre' },     // Vie
+      6: { l: 'libre', n: 'libre' },     // Sab
+    };
+
+    let calendarRules = '';
+    for (let d = firstDay; d <= daysInMonth; d++) {
+      const dow = new Date(year, month, d).getDay();
+      calendarRules += `${d}=${dayAbbr[dow]}(${dayRules[dow].l}/${dayRules[dow].n}) `;
+    }
+
+    const prompt = `Eres nutricionista. Genera menú equilibrado para ${monthNames[month]} (días ${firstDay}-${daysInMonth}).
+
+Cada día tiene una regla fija de tipo de plato. El tipo va ANTES de la barra para almuerzo, DESPUÉS para cena:
+${calendarRules}
+
+Recetas: ${recipesList}
+IDs especiales: -1=libre, -2=arroz domingo, -3=improvisar (si no encuentras receta del tipo pedido)
+
+Reglas: no repetir receta misma semana, alternar sub-tipos, cenas ligeras, respetar slot (lunch→almuerzo, dinner→cena, any→cualquiera).
+
+Responde solo esto, sin markdown ni backticks:
+[{"d":${firstDay},"l":ID,"n":ID},...]`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 429) {
+      const detail = data?.error?.message || 'rate limit';
+      return res.status(429).json({ error: 'Límite Gemini: ' + detail });
+    }
+
+    if (!response.ok) {
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      return res.status(502).json({ error: 'Error Gemini: ' + errMsg });
+    }
+
+    const candidate = data?.candidates?.[0];
+    const finishReason = candidate?.finishReason || 'UNKNOWN';
+    const parts = candidate?.content?.parts || [];
+    const text = parts.map(p => p.text || '').join('');
+
+    console.log('[Gemini] finishReason:', finishReason, 'parts:', parts.length, 'textLen:', text.length);
+
+    if (!text) {
+      return res.status(500).json({ error: 'Gemini devolvió respuesta vacía (finishReason: ' + finishReason + ')' });
+    }
+
+    if (finishReason === 'MAX_TOKENS') {
+      return res.status(500).json({ error: 'Respuesta truncada por límite de tokens. Reduce el número de recetas o el mes.' });
+    }
+
+    let jsonStr = '';
+    const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (mdMatch) {
+      jsonStr = mdMatch[1].trim();
+    } else {
+      const arrMatch = text.match(/\[[\s\S]*\]/);
+      jsonStr = arrMatch ? arrMatch[0] : '';
+    }
+
+    if (!jsonStr) {
+      console.error('[Gemini] No JSON. Raw text (primeros 1000):', text.slice(0, 1000));
+      return res.status(500).json({ error: 'La IA no devolvió JSON válido. Inténtalo de nuevo.' });
+    }
+
+    let raw;
+    try {
+      raw = JSON.parse(jsonStr);
+    } catch {
+      console.error('[Gemini] JSON parse error. Text:', jsonStr.slice(0, 1000));
+      return res.status(500).json({ error: 'JSON mal formado. Inténtalo de nuevo.' });
+    }
+
+    if (!Array.isArray(raw)) {
+      return res.status(500).json({ error: 'Formato inesperado (no es array).' });
+    }
+
+    const days = raw.map(e => ({
+      day: e.d || e.day,
+      lunchId: e.l || e.lunchId,
+      dinnerId: e.n || e.dinnerId,
+    }));
+
+    res.json({ days, month, year });
+  } catch (e) {
+    res.status(500).json({ error: 'Error: ' + e.message });
   }
 });
 
@@ -621,6 +784,72 @@ app.get('/api/cookidoo/search', async (req, res) => {
   }
 });
 
+app.post('/api/cookidoo/predefined', async (req, res) => {
+  try {
+    await ensureCookidooAuth();
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
+  }
+  try {
+    const settings = await getSettings(['cookidoo_country', 'cookidoo_language']);
+    const country = settings.cookidoo_country || 'es';
+    const language = settings.cookidoo_language || 'es-ES';
+    const locale = language.split('-')[0];
+
+    const searches = [
+      { term: 'lentejas guiso', type: 'legumbres' },
+      { term: 'garbanzos', type: 'legumbres' },
+      { term: 'alubias', type: 'legumbres' },
+      { term: 'verduras salteadas', type: 'verduras' },
+      { term: 'ensalada', type: 'verduras' },
+      { term: 'salmon', type: 'pescado' },
+      { term: 'merluza', type: 'pescado' },
+      { term: 'pasta', type: 'pasta' },
+      { term: 'espaguetis', type: 'pasta' },
+      { term: 'pollo', type: 'carne' },
+      { term: 'ternera', type: 'carne' },
+      { term: 'arroz', type: 'arroz' },
+      { term: 'paella', type: 'arroz' },
+      { term: 'tortilla', type: 'cena' },
+      { term: 'cena rapida', type: 'cena' },
+    ];
+
+    const allResults = [];
+    const seenIds = new Set();
+
+    for (const s of searches) {
+      try {
+        const searchUrl = `https://cookidoo.${country}/search/${locale}?query=${encodeURIComponent(s.term)}&pageSize=4`;
+        const apiRes = await fetch(searchUrl, {
+          headers: {
+            Accept: 'application/json',
+            Cookie: makeCookieHeader(cookidooCookieJar),
+          },
+        });
+        if (!apiRes.ok) continue;
+        const body = await apiRes.json();
+        const hits = body.data || body.recipes || [];
+        for (const item of hits) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            allResults.push({
+              name: item.title || item.name || '—',
+              id: item.id,
+              suggestedType: s.type,
+            });
+          }
+        }
+      } catch {
+        // skip failed searches
+      }
+    }
+
+    res.json({ results: allResults });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cookidoo/add-to-shopping-list', async (req, res) => {
   const { recipeIds } = req.body;
   if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
@@ -758,30 +987,23 @@ app.put('/api/settings/batch', authMiddleware, async (req, res) => {
   }
 });
 
-// Serve built Angular app in production
-function findDistPath() {
-  const candidates = [
-    path.join(__dirname, '..', 'dist', 'menubox', 'browser'),
-    path.join(__dirname, '..', 'dist', 'menubox', 'browser'),
-  ];
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
+const listenPort = process.env.PORT || port;
 
-const distPath = findDistPath();
-if (distPath) {
+// Serve built Angular app in production (must be after all API routes)
+const distPath = path.join(__dirname, '..', 'dist', 'menubox', 'browser');
+const hasDist = fs.existsSync(distPath);
+
+if (hasDist) {
   app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
       res.sendFile(path.join(distPath, 'index.html'));
+    } else {
+      next();
     }
   });
-  console.log(`Sirviendo frontend desde ${distPath}`);
 }
 
-const listenPort = process.env.PORT || port;
 app.listen(listenPort, () => {
   console.log(`Servidor corriendo en puerto ${listenPort}`);
 });

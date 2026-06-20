@@ -5,10 +5,13 @@
 </div>
 
 <div *ngIf="loadError" class="load-error">{{ loadError }}</div>
-<div *ngIf="loading" class="loading">Cargando calendario…</div>
+<div *ngIf="aiError" class="load-error">{{ aiError }} <button (click)="aiError=''" class="btn-dismiss">✕</button></div>
 
-<div class="nav-bar" *ngIf="!loading">
+<div class="nav-bar">
     <button (click)="generateCalendar()">🔄 Generar</button>
+    <button (click)="generateAiCalendar()" [disabled]="aiLoading" class="btn-ai">
+      {{ aiLoading ? '⏳ Pensando...' : '🤖 IA Generar' }}
+    </button>
     <button (click)="saveCalendar()">💾 Guardar</button>
     <button (click)="loadCalendar()">📂 Cargar</button>
     <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
@@ -16,8 +19,9 @@
     <button (click)="addToMercadona()" class="btn-mercadona">🛍️ Mercadona</button>
 </div>
 
-<div class="calendar-container">
-    <div *ngFor="let day of weekDays" class="day-header">{{ day }}</div>
+<div class="calendar-wrapper">
+  <div class="calendar-container">
+      <div *ngFor="let day of weekDays" class="day-header">{{ day }}</div>
     
     <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'past': day.isPast, 'empty': day.isEmpty}">
         <ng-container *ngIf="!day.isEmpty">
@@ -47,7 +51,16 @@
     </div>
 </div>
 
-<div *ngIf="!loading && !loadError && calendarDays.length === 0" class="empty-state">
+<div *ngIf="loading || aiLoading" class="ai-loading-overlay">
+  <div class="ai-loading-card">
+    <div class="ai-loading-spinner"></div>
+    <p class="ai-loading-text">{{ aiLoading ? '🤖 Generando menú con IA...' : 'Cargando calendario...' }}</p>
+    <p class="ai-loading-sub">{{ aiLoading ? 'Esto puede tardar hasta un minuto' : 'Obteniendo datos del servidor' }}</p>
+  </div>
+</div>
+</div>
+
+<div *ngIf="!loading && !aiLoading && !loadError && calendarDays.length === 0" class="empty-state">
     No hay datos para este mes. Pulsa "Generar" para crear un menú.
 </div>
 

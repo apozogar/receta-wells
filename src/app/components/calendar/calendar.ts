@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { lastValueFrom, Subscription } from 'rxjs';
@@ -47,6 +47,8 @@ export class Calendar implements OnInit, OnDestroy {
 
   loading = true;
   loadError = '';
+  aiLoading = false;
+  aiError = '';
   showSyncModal = false;
   syncLoading = false;
   syncShoppingRecipes: string[] = [];
@@ -62,7 +64,6 @@ export class Calendar implements OnInit, OnDestroy {
     private thermomix: Thermomix,
     private mercadona: MercadonaService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef,
     private toast: ToastService,
     private confirmSvc: ConfirmService,
   ) {
@@ -105,7 +106,7 @@ export class Calendar implements OnInit, OnDestroy {
           ? 'Tiempo de espera agotado. El servidor no responde.'
           : 'Error al cargar recetas: ' + (err.error?.error || err.statusText || 'Error de conexión');
         this.loadError = msg;
-        this.cdr.detectChanges();
+        
         console.error('Error loading recipes:', err);
       },
     });
@@ -166,6 +167,7 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   generateCalendar() {
+    this.aiError = '';
     this.calendarDays = [];
     this.usedIdsByType = new Map();
     const { currentYear: year, currentMonth: month } = this;
@@ -249,7 +251,7 @@ export class Calendar implements OnInit, OnDestroy {
   loadCalendar() {
     this.loading = true;
     this.loadError = '';
-    this.cdr.detectChanges();
+    
     const version = this.loadVersion;
     const { currentYear: year, currentMonth: month } = this;
     this.menuService.getCalendar(month, year).subscribe({
@@ -257,7 +259,7 @@ export class Calendar implements OnInit, OnDestroy {
         this.loading = false;
         if (this.loadVersion !== version) return;
         this.buildCalendarGrid(entries || [], month, year);
-        this.cdr.detectChanges();
+        
       },
       error: (err) => {
         this.loading = false;
@@ -266,7 +268,7 @@ export class Calendar implements OnInit, OnDestroy {
           ? 'Tiempo de espera agotado. El servidor no responde.'
           : 'Error al cargar calendario: ' + (err.error?.error || err.statusText || 'Error de conexión');
         this.loadError = msg;
-        this.cdr.detectChanges();
+        
         console.error('Error loading calendar:', err);
       },
     });
@@ -343,7 +345,7 @@ export class Calendar implements OnInit, OnDestroy {
       this.groupedRecipes.push({ label: this.typeLabels[type] || type, recipes });
     }
     this.showRecipePicker = true;
-    this.cdr.detectChanges();
+    
   }
 
   selectRecipe(recipe: Recipe) {
@@ -355,7 +357,7 @@ export class Calendar implements OnInit, OnDestroy {
     this.availableRecipesForSlot = [];
     this.groupedRecipes = [];
     this.saveCalendar();
-    this.cdr.detectChanges();
+    
   }
 
   cancelEdit() {
@@ -364,11 +366,77 @@ export class Calendar implements OnInit, OnDestroy {
     this.editingSlot = null;
     this.availableRecipesForSlot = [];
     this.groupedRecipes = [];
-    this.cdr.detectChanges();
+    
   }
 
   print() {
     window.print();
+  }
+
+  generateAiCalendar() {
+    this.aiLoading = true;
+    this.aiError = '';
+    
+
+    const now = new Date();
+    const isCurrentMonth = this.currentMonth === now.getMonth() && this.currentYear === now.getFullYear();
+    const startDay = isCurrentMonth ? now.getDate() : 1;
+
+    const call = isCurrentMonth
+      ? this.menuService.generateAiMenuFrom(this.currentMonth, this.currentYear, startDay)
+      : this.menuService.generateAiMenu(this.currentMonth, this.currentYear);
+
+    call.subscribe({
+      next: (res) => {
+        this.aiLoading = false;
+        this.usedIdsByType = new Map();
+        this.buildCalendarFromAi(res.days, this.currentMonth, this.currentYear);
+        this.saveCalendar(true);
+        this.toast.success('Menú generado por IA');
+        
+      },
+      error: (err) => {
+        this.aiLoading = false;
+        this.aiError = err.error?.error || err.statusText || 'Error al generar menú con IA';
+        
+      },
+    });
+  }
+
+  private buildCalendarFromAi(days: CalendarEntry[], month: number, year: number) {
+    const now = new Date();
+    this.calendarDays = [];
+    const firstDay = new Date(year, month, 1);
+    let startingDay = firstDay.getDay();
+    if (startingDay === 0) startingDay = 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 1; i < startingDay; i++) {
+      this.calendarDays.push({ day: null, dayName: '', isToday: false, isPast: false, isEmpty: true });
+    }
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const entry = days.find((e: any) => e.day === d);
+      const lunch = entry?.lunchId ? this.getRecipeById(entry.lunchId) : undefined;
+      const dinner = entry?.dinnerId ? this.getRecipeById(entry.dinnerId) : undefined;
+
+      const currentDayDate = new Date(year, month, d);
+      const dayNameIndex = (currentDayDate.getDay() + 6) % 7;
+      const isToday = d === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+      const isPast = currentDayDate < todayStart;
+
+      this.calendarDays.push({
+        day: d,
+        dayName: this.weekDays[dayNameIndex],
+        isToday,
+        isPast,
+        lunch: isPast ? undefined : (lunch || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] }),
+        dinner: isPast ? undefined : (dinner || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] }),
+        isEmpty: false,
+      });
+    }
   }
 
   async addToShoppingList() {
@@ -379,7 +447,7 @@ export class Calendar implements OnInit, OnDestroy {
     this.syncError = '';
     this.syncLoading = true;
     this.showSyncModal = true;
-    this.cdr.detectChanges();
+    
 
     const recipeIds = new Set<string>();
     const agendaEntries: { cookidooId: string; date: string; name: string }[] = [];
@@ -401,7 +469,7 @@ export class Calendar implements OnInit, OnDestroy {
     if (recipeIds.size === 0) {
       this.syncError = 'Ninguna receta tiene ID de Cookidoo. Ve a Recetas para asignarlos.';
       this.syncLoading = false;
-      this.cdr.detectChanges();
+      
       return;
     }
 
@@ -447,12 +515,12 @@ export class Calendar implements OnInit, OnDestroy {
     } catch { }
 
     this.syncLoading = false;
-    this.cdr.detectChanges();
+    
   }
 
   closeSyncModal() {
     this.showSyncModal = false;
-    this.cdr.detectChanges();
+    
   }
 
   async addToMercadona() {

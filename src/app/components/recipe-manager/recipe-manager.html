@@ -4,6 +4,7 @@
 
 <div class="controls">
   <button (click)="startNew()">➕ Nueva Receta</button>
+  <button (click)="openImportModal()" class="btn-import">📥 Importar Cookidoo</button>
 </div>
 
 <div class="form-card" *ngIf="isNew || editingRecipe">
@@ -96,3 +97,49 @@
     </tr>
   </tbody>
 </table>
+
+<div class="modal-overlay" *ngIf="showImportModal" (click)="closeImportModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Importar recetas de Cookidoo</h3>
+      <button class="btn-close" (click)="closeImportModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="loading" *ngIf="importLoading">Buscando recetas en Cookidoo…</div>
+      <div class="error" *ngIf="importError">{{ importError }}</div>
+
+      <div *ngIf="!importLoading && !importError && importResults.length">
+        <div class="import-toolbar">
+          <label class="select-all">
+            <input type="checkbox" [checked]="selectedImportCount() === importResults.length"
+                   (change)="toggleImportAll($any($event.target).checked)" />
+            Seleccionar todo ({{ importResults.length }})
+          </label>
+        </div>
+
+        <div class="import-list">
+          <div class="import-group" *ngFor="let group of importResultsGrouped">
+            <div class="import-group-header">{{ typeLabel(group.type) }}</div>
+            <label class="import-item" *ngFor="let r of group.items">
+              <input type="checkbox" [(ngModel)]="r.checked" />
+              <span class="import-name">{{ r.name }}</span>
+              <span class="import-id">{{ r.id }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!importLoading && !importError && !importResults.length" class="empty-state">
+        No se encontraron recetas. Verifica tus credenciales de Cookidoo en Ajustes.
+      </div>
+    </div>
+
+    <div class="modal-footer" *ngIf="importResults.length">
+      <button (click)="closeImportModal()" class="btn-secondary">Cancelar</button>
+      <button (click)="importSelected()" class="btn-primary" [disabled]="importing || selectedImportCount() === 0">
+        {{ importing ? 'Importando…' : 'Importar ' + selectedImportCount() + ' recetas' }}
+      </button>
+    </div>
+  </div>
+</div>
