@@ -1,12 +1,29 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: toor
+      POSTGRES_DB: menubox
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
     build: ./server
     ports:
       - "3000:3000"
-    volumes:
-      # Persistencia: Mapeamos el archivo de base de datos local al contenedor
-      # IMPORTANTE: El archivo menu.db debe existir en tu host, si no Docker creará una carpeta
-      - ./server/menu.db:/usr/src/app/menu.db
+    environment:
+      DATABASE_URL: postgresql://postgres:toor@db:5432/menubox
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
     build: .
@@ -14,3 +31,6 @@ services:
       - "80:80"
     depends_on:
       - api
+
+volumes:
+  pgdata:

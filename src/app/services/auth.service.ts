@@ -170,6 +170,61 @@ export class AuthService {
     }
   }
 
+  async shareMenu(menuId: number, usernameOrEmail: string, role = 'editor'): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.requestWithTimeout(
+        this.http.post(`${this.apiUrl}/menus/${menuId}/share`, { usernameOrEmail, role }),
+      );
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e.error?.error || e.message };
+    }
+  }
+
+  async getMenuUsers(menuId: number): Promise<{ id: number; username: string; email: string; role: string }[]> {
+    try {
+      return await this.requestWithTimeout(
+        this.http.get<{ id: number; username: string; email: string; role: string }[]>(`${this.apiUrl}/menus/${menuId}/users`),
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  async removeMenuUser(menuId: number, userId: number): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.requestWithTimeout(
+        this.http.delete(`${this.apiUrl}/menus/${menuId}/users/${userId}`),
+      );
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e.error?.error || e.message };
+    }
+  }
+
+  async cloneMenu(menuId: number, name?: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.requestWithTimeout(
+        this.http.post(`${this.apiUrl}/menus/${menuId}/clone`, { name }),
+      );
+      await this.loadMenus();
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e.error?.error || e.message };
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.requestWithTimeout(
+        this.http.post(`${this.apiUrl}/auth/change-password`, { currentPassword, newPassword }),
+      );
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e.error?.error || e.message || 'Error de conexión' };
+    }
+  }
+
   logout() {
     this.token = null;
     this.ngZone.run(() => {

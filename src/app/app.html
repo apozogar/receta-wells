@@ -16,6 +16,8 @@
                   (click)="selectMenu(m.id)">
             <span class="menu-item-name">{{ m.name }}</span>
             <span class="menu-item-actions">
+              <span class="menu-action-btn" (click)="openShareModal(m, $event)" title="Compartir">👥</span>
+              <span class="menu-action-btn" (click)="cloneMenu(m, $event)" title="Clonar">📋</span>
               <span class="menu-action-btn" (click)="openRenameMenu(m, $event)" title="Renombrar">✎</span>
               <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
             </span>
@@ -54,6 +56,8 @@
                   (click)="selectMenu(m.id)">
             <span class="menu-item-name">{{ m.name }}</span>
             <span class="menu-item-actions">
+              <span class="menu-action-btn" (click)="openShareModal(m, $event)" title="Compartir">👥</span>
+              <span class="menu-action-btn" (click)="cloneMenu(m, $event)" title="Clonar">📋</span>
               <span class="menu-action-btn" (click)="openRenameMenu(m, $event)" title="Renombrar">✎</span>
               <span class="menu-action-btn danger" (click)="deleteMenu(m, $event)" title="Eliminar">✕</span>
             </span>
@@ -82,6 +86,7 @@
         <span class="user-avatar">👤</span>
         <span class="user-name">{{ user.username }}</span>
       </div>
+      <button (click)="toggleDarkMode()" class="btn-logout" style="margin-bottom: 8px;">{{ isDark ? '☀️ Modo claro' : '🌙 Modo oscuro' }}</button>
       <button (click)="logout()" class="btn-logout">Cerrar sesión</button>
     </div>
   </aside>
@@ -127,6 +132,43 @@
         <span class="btn-spinner" *ngIf="menuModalLoading"></span>
         {{ menuModalMode === 'create' ? 'Crear' : 'Guardar' }}
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Share menu modal -->
+<div class="modal-overlay" *ngIf="showShareModal" (click)="closeShareModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="closeShareModal()">✕</button>
+    <h2>👥 Compartir "{{ editingMenu?.name }}"</h2>
+    <div class="share-row">
+      <input
+        class="menu-modal-input"
+        type="text"
+        [(ngModel)]="shareUsername"
+        placeholder="Nombre de usuario o email"
+        (keyup.enter)="shareMenu()"
+        (keyup.escape)="closeShareModal()"
+        [disabled]="shareLoading"
+        autofocus
+      />
+      <button class="btn-primary" (click)="shareMenu()" [disabled]="!shareUsername.trim() || shareLoading">
+        {{ shareLoading ? '...' : 'Añadir' }}
+      </button>
+    </div>
+    <p class="share-error" *ngIf="shareError">{{ shareError }}</p>
+    <div class="share-users" *ngIf="shareUsers.length > 0">
+      <h3>Usuarios con acceso</h3>
+      <div class="share-user" *ngFor="let u of shareUsers">
+        <span class="share-user-name">{{ u.username }}</span>
+        <span class="share-user-email">{{ u.email }}</span>
+        <span class="share-user-role" [class.admin]="u.role === 'admin'">{{ u.role }}</span>
+        <button *ngIf="u.role !== 'admin'" class="btn-small btn-danger" (click)="removeShareUser(u.id)">✕</button>
+      </div>
+    </div>
+    <div class="share-loading" *ngIf="shareLoadingUsers">Cargando...</div>
+    <div class="share-empty" *ngIf="!shareLoadingUsers && shareUsers.length === 0 && !shareError">
+      No hay otros usuarios en este menú. Añade a alguien para compartir.
     </div>
   </div>
 </div>

@@ -8,19 +8,25 @@
 <div *ngIf="aiError" class="load-error">{{ aiError }} <button (click)="aiError=''" class="btn-dismiss">✕</button></div>
 
 <div class="nav-bar">
-    <button (click)="generateCalendar()">🔄 Generar</button>
-    <button (click)="generateAiCalendar()" [disabled]="aiLoading" class="btn-ai">
-      {{ aiLoading ? '⏳ Pensando...' : '🤖 IA Generar' }}
+    <button (click)="generate()" [disabled]="aiLoading" [class.btn-ai]="hasAiKeys">
+      {{ aiLoading ? '⏳ Pensando...' : (hasAiKeys ? '🤖 Generar' : '🔄 Generar') }}
     </button>
-    <button (click)="saveCalendar()">💾 Guardar</button>
-    <button (click)="loadCalendar()">📂 Cargar</button>
+    <button (click)="viewMode === 'month' ? switchToWeekly() : switchToMonthly()" class="btn-secondary">
+      {{ viewMode === 'month' ? '📆 Semanal' : '📅 Mensual' }}
+    </button>
     <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
     <button (click)="addToShoppingList()" class="btn-success">🛒 Cookidoo</button>
     <button (click)="addToMercadona()" class="btn-mercadona">🛍️ Mercadona</button>
 </div>
 
+<div class="week-nav" *ngIf="viewMode === 'week'">
+  <button (click)="prevWeek()" class="btn-nav">◀</button>
+  <span class="week-title">{{ weekSpanLabel() }}</span>
+  <button (click)="nextWeek()" class="btn-nav">▶</button>
+</div>
+
 <div class="calendar-wrapper">
-  <div class="calendar-container">
+  <div class="calendar-container" *ngIf="viewMode === 'month'">
       <div *ngFor="let day of weekDays" class="day-header">{{ day }}</div>
     
     <div *ngFor="let day of calendarDays" class="day-card" [ngClass]="{'today': day.isToday, 'past': day.isPast, 'empty': day.isEmpty}">
@@ -56,6 +62,34 @@
     <div class="ai-loading-spinner"></div>
     <p class="ai-loading-text">{{ aiLoading ? '🤖 Generando menú con IA...' : 'Cargando calendario...' }}</p>
     <p class="ai-loading-sub">{{ aiLoading ? 'Esto puede tardar hasta un minuto' : 'Obteniendo datos del servidor' }}</p>
+  </div>
+</div>
+
+<div class="weekly-view" *ngIf="viewMode === 'week' && weekDaysList.length > 0">
+  <div class="week-days-header">
+    <div *ngFor="let day of weekDays" class="day-header">{{ day }}</div>
+  </div>
+  <div class="week-days-body">
+    <div *ngFor="let day of weekDaysList" class="week-day-card" [ngClass]="{'today': day.isToday, 'past': day.isPast}">
+      <div class="week-day-card-header">
+        <span class="week-day-name">{{ day.dayName }}</span>
+        <span class="week-date-number">{{ day.day }}</span>
+      </div>
+      <div class="week-meal lunch">
+        <div (click)="!day.isPast && startEdit(day, 'lunch')" class="week-meal-content" [ngClass]="{'disabled': day.isPast}">
+          <strong>ALMUERZO</strong>
+          <span *ngIf="day.lunch">{{ day.lunch.name }}</span>
+          <span *ngIf="!day.lunch" class="no-recipe">—</span>
+        </div>
+      </div>
+      <div class="week-meal dinner">
+        <div (click)="!day.isPast && startEdit(day, 'dinner')" class="week-meal-content" [ngClass]="{'disabled': day.isPast}">
+          <strong>CENA</strong>
+          <span *ngIf="day.dinner">{{ day.dinner.name }}</span>
+          <span *ngIf="!day.dinner" class="no-recipe">—</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 </div>

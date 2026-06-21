@@ -35,6 +35,10 @@ export class Calendar implements OnInit, OnDestroy {
   calendarDays: CalendarDay[] = [];
   recipes: Recipe[] = [];
 
+  viewMode: 'month' | 'week' = 'month';
+  weekOffset = 0;
+  weekDaysList: CalendarDay[] = [];
+
   currentMonth: number;
   currentYear: number;
   private loadVersion = 0;
@@ -49,6 +53,7 @@ export class Calendar implements OnInit, OnDestroy {
   loadError = '';
   aiLoading = false;
   aiError = '';
+  hasAiKeys = false;
   showSyncModal = false;
   syncLoading = false;
   syncShoppingRecipes: string[] = [];
@@ -87,6 +92,9 @@ export class Calendar implements OnInit, OnDestroy {
     this.menuSub = this.auth.currentMenuId$.subscribe(() => {
       this.loadRecipesAndCalendar();
     });
+    this.menuService.getSettings().subscribe(settings => {
+      this.hasAiKeys = !!(settings['gemini_api_key'] || settings['groq_api_key']);
+    });
   }
 
   ngOnDestroy() {
@@ -123,15 +131,107 @@ export class Calendar implements OnInit, OnDestroy {
   prevMonth() { this.navigateMonth(-1); }
   nextMonth() { this.navigateMonth(1); }
 
+  switchToWeekly() {
+    this.viewMode = 'week';
+    this.weekOffset = 0;
+    this.calculateWeekDays();
+  }
+
+  switchToMonthly() { this.viewMode = 'month'; }
+
+  prevWeek() {
+    this.weekOffset--;
+    this.calculateWeekDays();
+  }
+
+  nextWeek() {
+    this.weekOffset++;
+    this.calculateWeekDays();
+  }
+
+  private getMondayOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  private getWeekSpan(): { start: Date; end: Date } {
+    const now = new Date();
+    const baseMonday = this.getMondayOfWeek(new Date(this.currentYear, this.currentMonth, now.getDate()));
+    const monday = new Date(baseMonday);
+    monday.setDate(monday.getDate() + this.weekOffset * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { start: monday, end: sunday };
+  }
+
+  weekSpanLabel(): string {
+    const { start, end } = this.getWeekSpan();
+    const fmt = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
+    const weekNum = Math.ceil((start.getDate() + 6 - start.getDay()) / 7) || 1;
+    let label = fmt(start) + ' - ' + fmt(end);
+    const mStart = this.monthNames[start.getMonth()];
+    const mEnd = this.monthNames[end.getMonth()];
+    if (mStart !== mEnd) label += ` (${mStart} - ${mEnd} ${start.getFullYear()})`;
+    else label += ` (sem. ${weekNum}, ${mStart} ${start.getFullYear()})`;
+    return label;
+  }
+
+  calculateWeekDays() {
+    const { start } = this.getWeekSpan();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    this.weekDaysList = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const dm = d.getMonth();
+      const dy = d.getFullYear();
+      const dd = d.getDate();
+      const dayNameIndex = (d.getDay() + 6) % 7;
+      const isToday = dd === new Date().getDate() && dm === new Date().getMonth() && dy === new Date().getFullYear();
+      const isPast = d < todayStart;
+
+      this.weekDaysList.push({
+        day: dd,
+        dayName: this.weekDays[dayNameIndex],
+        isToday,
+        isPast,
+        isEmpty: false,
+        lunch: undefined,
+        dinner: undefined,
+      });
+    }
+
+    const minMonth = this.weekDaysList[0].day !== null ? start.getMonth() : 0;
+    const minYear = start.getFullYear();
+    const maxMonth = this.weekDaysList[6].day !== null ? start.getMonth() + Math.floor((start.getDate() + 6) / 31) : 11;
+    const maxYear = start.getFullYear();
+
+    this.menuService.getCalendar(minMonth, minYear).subscribe(entries => {
+      for (const wd of this.weekDaysList) {
+        if (wd.day === null) continue;
+        const entry = entries.find((e: any) => e.day === wd.day && e.month === start.getMonth() && e.year === minYear);
+        if (entry) {
+          wd.lunch = this.getRecipeById(entry.lunch_recipe_id);
+          wd.dinner = this.getRecipeById(entry.dinner_recipe_id);
+        }
+      }
+    });
+  }
+
   private usedIdsByType: Map<string, number[]> = new Map();
 
   private getSpecialRecipe(type: string): Recipe | null {
     if (type === 'free')
-      return { name: '✨ Libre / Fuera', id: -1, type: 'free', slot: 'any', tags: [] };
+      return { name: '✨ Libre / Fuera', id: -1, type: 'free', slot: 'any', tags: [], servings: 4, image_url: '' };
     if (type === 'arroz')
-      return { name: '🍚 Arroz / Batch Cooking', id: -2, type: 'arroz', slot: 'lunch', tags: ['Tupper'] };
+      return { name: '🍚 Arroz / Batch Cooking', id: -2, type: 'arroz', slot: 'lunch', tags: ['Tupper'], servings: 4, image_url: '' };
     if (type === 'improvisar')
-      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] };
+      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [], servings: 4, image_url: '' };
     return null;
   }
 
@@ -157,13 +257,21 @@ export class Calendar implements OnInit, OnDestroy {
     }
 
     if (available.length === 0)
-      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] };
+      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [], servings: 4, image_url: '' };
 
     const picked = available[Math.floor(Math.random() * available.length)];
     const newUsed = this.usedIdsByType.get(type) || [];
     newUsed.push(picked.id);
     this.usedIdsByType.set(type, newUsed);
     return picked;
+  }
+
+  generate() {
+    if (this.hasAiKeys) {
+      this.generateAiCalendar();
+    } else {
+      this.generateCalendar();
+    }
   }
 
   generateCalendar() {
@@ -275,7 +383,7 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   getRecipeById(id: number): Recipe | undefined {
-    if (id === -1) return { name: '✨ Libre / Fuera', id: -1, type: 'free', slot: 'any', tags: [] };
+    if (id === -1) return { name: '✨ Libre / Fuera', id: -1, type: 'free', slot: 'any', tags: [], servings: 4, image_url: '' };
     if (id === -2)
       return {
         name: '🍚 Arroz / Batch Cooking',
@@ -283,9 +391,11 @@ export class Calendar implements OnInit, OnDestroy {
         type: 'arroz',
         slot: 'lunch',
         tags: ['Tupper'],
+        servings: 4,
+        image_url: '',
       };
     if (id === -3)
-      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] };
+      return { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [], servings: 4, image_url: '' };
     return this.recipes.find((r) => r.id === id);
   }
 
@@ -330,7 +440,7 @@ export class Calendar implements OnInit, OnDestroy {
     this.editingSlot = slot;
     const all = [
       ...this.recipes,
-      { name: '✨ Libre', id: -1, type: 'free', slot: 'any', tags: [] } as Recipe,
+      { name: '✨ Libre', id: -1, type: 'free', slot: 'any', tags: [], servings: 4, image_url: '' } as Recipe,
     ];
     this.availableRecipesForSlot = all;
 
@@ -432,8 +542,8 @@ export class Calendar implements OnInit, OnDestroy {
         dayName: this.weekDays[dayNameIndex],
         isToday,
         isPast,
-        lunch: isPast ? undefined : (lunch || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] }),
-        dinner: isPast ? undefined : (dinner || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any', tags: [] }),
+        lunch: isPast ? undefined : (lunch || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any' as const, tags: [], servings: 4, image_url: '' }),
+        dinner: isPast ? undefined : (dinner || { name: 'Improvisar (Verde+Prot)', id: -3, type: 'improvisar', slot: 'any' as const, tags: [], servings: 4, image_url: '' }),
         isEmpty: false,
       });
     }

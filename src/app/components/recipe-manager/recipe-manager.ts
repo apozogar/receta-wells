@@ -17,10 +17,14 @@ import { RouterModule } from '@angular/router';
 })
 export class RecipeManager implements OnInit {
   recipes: Recipe[] = [];
+  filteredRecipes: Recipe[] = [];
   editingRecipe: Recipe | null = null;
   isNew = false;
   loading = true;
   errorMessage = '';
+  filterText = '';
+  filterType = '';
+  filterSlot = '';
 
   form: Omit<Recipe, 'id'> = {
     name: '',
@@ -28,6 +32,8 @@ export class RecipeManager implements OnInit {
     slot: 'any',
     tags: [],
     cookidooId: '',
+    servings: 4,
+    image_url: '',
   };
   tagInput = '';
 
@@ -68,6 +74,7 @@ export class RecipeManager implements OnInit {
       next: (recipes) => {
         console.log('RecipeManager: recipes received', recipes?.length);
         this.recipes = recipes;
+        this.applyFilter();
         this.loading = false;
         
       },
@@ -80,10 +87,25 @@ export class RecipeManager implements OnInit {
     });
   }
 
+  applyFilter() {
+    let result = this.recipes;
+    if (this.filterText) {
+      const q = this.filterText.toLowerCase();
+      result = result.filter(r => r.name.toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q)));
+    }
+    if (this.filterType) {
+      result = result.filter(r => r.type === this.filterType);
+    }
+    if (this.filterSlot) {
+      result = result.filter(r => r.slot === this.filterSlot);
+    }
+    this.filteredRecipes = result;
+  }
+
   startNew() {
     this.isNew = true;
     this.editingRecipe = null;
-    this.form = { name: '', type: 'cena', slot: 'any', tags: [], cookidooId: '' };
+    this.form = { name: '', type: 'cena', slot: 'any', tags: [], cookidooId: '', servings: 4, image_url: '' };
     this.tagInput = '';
   }
 
@@ -96,6 +118,8 @@ export class RecipeManager implements OnInit {
       slot: recipe.slot,
       tags: [...recipe.tags],
       cookidooId: recipe.cookidooId || '',
+      servings: recipe.servings || 4,
+      image_url: recipe.image_url || '',
     };
     this.tagInput = '';
   }
@@ -236,6 +260,8 @@ export class RecipeManager implements OnInit {
         slot: 'any' as const,
         tags: [] as string[],
         cookidooId: r.id,
+        servings: 4,
+        image_url: '',
         menuId,
       };
       this.menuService.createRecipe(recipeData).subscribe({

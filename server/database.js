@@ -71,9 +71,17 @@ async function initDatabase() {
       id SERIAL PRIMARY KEY,
       recipe_id INTEGER NOT NULL REFERENCES recipes(id),
       name TEXT NOT NULL,
-      category TEXT DEFAULT ''
+      category TEXT DEFAULT '',
+      quantity TEXT DEFAULT '',
+      unit TEXT DEFAULT ''
     )
   `);
+
+  await query(`ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS quantity TEXT DEFAULT ''`);
+  await query(`ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT ''`);
+
+  await query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS servings INTEGER DEFAULT 4`);
+  await query(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT ''`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS calendar (

@@ -7,6 +7,23 @@
   <button (click)="openImportModal()" class="btn-import">📥 Importar Cookidoo</button>
 </div>
 
+<div class="filter-bar" *ngIf="recipes.length > 0">
+  <input [(ngModel)]="filterText" (input)="applyFilter()" placeholder="Buscar recetas o tags..." class="filter-input" />
+  <select [(ngModel)]="filterType" (change)="applyFilter()">
+    <option value="">Todos los tipos</option>
+    <option *ngFor="let t of typeOptions" [value]="t">{{ typeLabel(t) }}</option>
+  </select>
+  <select [(ngModel)]="filterSlot" (change)="applyFilter()">
+    <option value="">Todos los slots</option>
+    <option value="lunch">Solo comida</option>
+    <option value="dinner">Solo cena</option>
+    <option value="any">Cualquiera</option>
+  </select>
+  <span class="filter-count" *ngIf="filteredRecipes.length !== recipes.length">
+    {{ filteredRecipes.length }} / {{ recipes.length }}
+  </span>
+</div>
+
 <div class="form-card" *ngIf="isNew || editingRecipe">
   <h3>{{ isNew ? 'Nueva Receta' : 'Editar Receta' }}</h3>
   <div class="form-grid">
@@ -25,6 +42,14 @@
       <select [(ngModel)]="form.slot">
         <option *ngFor="let s of slotOptions" [value]="s.value">{{ s.label }}</option>
       </select>
+    </label>
+    <label>
+      Raciones
+      <input type="number" [(ngModel)]="form.servings" min="1" max="20" />
+    </label>
+    <label>
+      Imagen URL
+      <input [(ngModel)]="form.image_url" placeholder="https://..." />
     </label>
     <label class="cookidoo-label">
       Cookidoo ID
@@ -81,7 +106,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr *ngFor="let recipe of recipes">
+    <tr *ngFor="let recipe of filteredRecipes">
       <td>{{ recipe.name }}</td>
       <td><span class="badge">{{ recipe.type }}</span></td>
       <td>{{ slotLabel(recipe.slot) }}</td>

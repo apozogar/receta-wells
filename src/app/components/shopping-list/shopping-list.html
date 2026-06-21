@@ -1,0 +1,73 @@
+<header>
+  <h1>Lista de la compra</h1>
+  <div class="header-controls">
+    <button (click)="prevMonth()">◀</button>
+    <span class="month-label">{{ monthNames[currentMonth] }} {{ currentYear }}</span>
+    <button (click)="nextMonth()">▶</button>
+  </div>
+</header>
+
+<div class="controls-bar">
+  <span class="progress">{{ completedCount }} / {{ totalCount }} comprados</span>
+  <button (click)="sendToMercadona()" class="btn-mercadona" *ngIf="totalCount > 0">🛒 Añadir a Mercadona</button>
+  <button (click)="uncheckAll()" class="btn-secondary" *ngIf="completedCount > 0">Desmarcar todo</button>
+  <button (click)="print()" class="btn-print">🖨️ Imprimir</button>
+</div>
+
+<div class="error" *ngIf="loadError">{{ loadError }}</div>
+<div class="loading" *ngIf="loading">Cargando ingredientes…</div>
+
+<div class="empty" *ngIf="!loading && !loadError && groups.length === 0">
+  <p>No hay ingredientes planificados para este mes.</p>
+  <p class="hint">Ve al calendario y asigna recetas con ingredientes a los días.</p>
+</div>
+
+<div class="shopping-groups" *ngIf="groups.length > 0">
+  <div class="group" *ngFor="let group of groups">
+    <button class="group-header" (click)="toggleGroup(group)">
+      <span class="group-title">
+        <span class="group-arrow">{{ group.collapsed ? '▶' : '▼' }}</span>
+        {{ group.label }}
+      </span>
+      <span class="group-count">{{ group.items.length }}</span>
+    </button>
+    <div class="group-items" *ngIf="!group.collapsed">
+      <label class="item" *ngFor="let item of group.items">
+        <input type="checkbox" [(ngModel)]="item.checked" />
+        <span class="item-name">
+          {{ item.name }}
+          <span class="item-recipe" *ngIf="item.recipeName"> — {{ item.recipeName }}</span>
+        </span>
+        <span class="item-qty" *ngIf="item.quantity">
+          {{ item.quantity }} {{ item.unit }}
+        </span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showMercadonaModal" (click)="closeMercadonaModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>🛒 Mercadona</h3>
+      <button class="btn-close" (click)="closeMercadonaModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="loading" *ngIf="mercadonaLoading">Buscando productos…</div>
+      <div class="error" *ngIf="mercadonaError">{{ mercadonaError }}</div>
+      <div *ngIf="!mercadonaLoading && mercadonaResults.length">
+        <div class="mercadona-result" *ngFor="let item of mercadonaResults">
+          <span *ngIf="!item.skipped && item.matchedProduct">
+            ✅ {{ item.ingredient }} → {{ item.matchedProduct.display_name }}
+          </span>
+          <span *ngIf="item.skipped" class="skipped">
+            ⚠️ {{ item.ingredient }} — {{ item.reason }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button (click)="closeMercadonaModal()" class="btn-primary">Cerrar</button>
+    </div>
+  </div>
+</div>

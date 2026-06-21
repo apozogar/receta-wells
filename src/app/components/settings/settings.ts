@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MenuService } from '../../services/menu.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-settings',
@@ -22,14 +23,46 @@ export class Settings implements OnInit {
   mercadonaCustomerUuid = '';
   mercadonaAccessToken = '';
 
+  changePwCurrent = '';
+  changePwNew = '';
+  changePwConfirm = '';
+  changingPw = false;
+  changePwResult: string | null = null;
+
   saved = false;
   testingCookidoo = false;
   cookidooTestResult: string | null = null;
 
   constructor(
     private menuService: MenuService,
+    private authService: AuthService,
     private http: HttpClient,
   ) {}
+
+  async changePassword() {
+    if (!this.changePwCurrent || !this.changePwNew || !this.changePwConfirm) {
+      this.changePwResult = '❌ Rellena todos los campos';
+      return;
+    }
+    if (this.changePwNew !== this.changePwConfirm) {
+      this.changePwResult = '❌ Las contraseñas no coinciden';
+      return;
+    }
+    if (this.changePwNew.length < 6) {
+      this.changePwResult = '❌ Mínimo 6 caracteres';
+      return;
+    }
+    this.changingPw = true;
+    this.changePwResult = null;
+    const result = await this.authService.changePassword(this.changePwCurrent, this.changePwNew);
+    this.changePwResult = result.ok ? '✅ Contraseña cambiada' : `❌ ${result.error}`;
+    this.changingPw = false;
+    if (result.ok) {
+      this.changePwCurrent = '';
+      this.changePwNew = '';
+      this.changePwConfirm = '';
+    }
+  }
 
   ngOnInit() {
     this.menuService.getSettings().subscribe((settings) => {

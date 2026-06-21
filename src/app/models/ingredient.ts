@@ -3,6 +3,8 @@ export interface Ingredient {
   recipe_id?: number;
   name: string;
   category: string;
+  quantity: string;
+  unit: string;
 }
 
 export interface MercadonaProduct {

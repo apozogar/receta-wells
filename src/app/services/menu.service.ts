@@ -54,7 +54,7 @@ export class MenuService {
     return this.http.get<Ingredient[]>(`${this.apiUrl}/recipes/${recipeId}/ingredients`);
   }
 
-  saveIngredients(recipeId: number, ingredients: { name: string; category?: string }[]): Observable<any> {
+  saveIngredients(recipeId: number, ingredients: { name: string; category?: string; quantity?: string; unit?: string }[]): Observable<any> {
     return this.http.post(`${this.apiUrl}/recipes/${recipeId}/ingredients`, { ingredients });
   }
 
@@ -62,8 +62,8 @@ export class MenuService {
     return this.http.get<{ ingredients: Ingredient[] }>(`${this.apiUrl}/recipes/${recipeId}/ingredients/scrape`);
   }
 
-  getCalendarIngredients(month: number, year: number): Observable<{ name: string; category: string; recipe_name: string; recipe_type: string }[]> {
-    return this.http.get<{ name: string; category: string; recipe_name: string; recipe_type: string }[]>(
+  getCalendarIngredients(month: number, year: number): Observable<{ name: string; category: string; quantity: string; unit: string; recipe_name: string; recipe_type: string }[]> {
+    return this.http.get<{ name: string; category: string; quantity: string; unit: string; recipe_name: string; recipe_type: string }[]>(
       `${this.apiUrl}/ingredients/from-calendar?month=${month}&year=${year}`
     );
   }

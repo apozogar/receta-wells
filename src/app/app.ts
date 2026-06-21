@@ -18,10 +18,12 @@ export class App implements OnInit {
   user: { username: string } | null = null;
   menus: Menu[] = [];
   currentMenuId = 1;
+  isDark = false;
 
   navItems = [
     { path: '/', label: 'Calendario', icon: '📅' },
     { path: '/recipes', label: 'Recetas', icon: '📖' },
+    { path: '/shopping-list', label: 'Compra', icon: '🛒' },
     { path: '/settings', label: 'Ajustes', icon: '⚙️' },
   ];
 
@@ -32,6 +34,13 @@ export class App implements OnInit {
   menuModalLoading = false;
   editingMenu: Menu | null = null;
 
+  showShareModal = false;
+  shareUsername = '';
+  shareLoading = false;
+  shareError = '';
+  shareUsers: { id: number; username: string; email: string; role: string }[] = [];
+  shareLoadingUsers = false;
+
   constructor(
     private auth: AuthService,
     private router: Router,
@@ -40,6 +49,8 @@ export class App implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.isDark = localStorage.getItem('theme') === 'dark';
+    this.applyTheme();
     this.auth.user$.subscribe(u => {
       this.user = u;
     });
@@ -113,6 +124,65 @@ export class App implements OnInit {
     await this.auth.deleteMenu(menu.id);
   }
 
+  openShareModal(menu: Menu, event: Event) {
+    event.stopPropagation();
+    this.shareUsername = '';
+    this.shareError = '';
+    this.shareUsers = [];
+    this.editingMenu = menu;
+    this.showShareModal = true;
+    this.showMenuDropdown = false;
+    this.loadShareUsers();
+  }
+
+  closeShareModal() {
+    this.showShareModal = false;
+    this.shareLoading = false;
+  }
+
+  async loadShareUsers() {
+    if (!this.editingMenu) return;
+    this.shareLoadingUsers = true;
+    this.shareUsers = await this.auth.getMenuUsers(this.editingMenu.id);
+    this.shareLoadingUsers = false;
+  }
+
+  async shareMenu() {
+    const name = this.shareUsername.trim();
+    if (!name || this.shareLoading || !this.editingMenu) return;
+    this.shareLoading = true;
+    this.shareError = '';
+    const result = await this.auth.shareMenu(this.editingMenu.id, name);
+    if (result.ok) {
+      this.shareUsername = '';
+      await this.loadShareUsers();
+    } else {
+      this.shareError = result.error || 'Error al compartir';
+    }
+    this.shareLoading = false;
+  }
+
+  async removeShareUser(userId: number) {
+    if (!this.editingMenu) return;
+    const ok = await this.confirm.confirm('¿Quitar acceso a este usuario?');
+    if (!ok) return;
+    await this.auth.removeMenuUser(this.editingMenu.id, userId);
+    await this.loadShareUsers();
+  }
+
+  async cloneMenu(menu: Menu, event: Event) {
+    event.stopPropagation();
+    this.showMenuDropdown = false;
+    const ok = await this.confirm.confirm(`¿Clonar "${menu.name}"? Se copiarán recetas, ingredientes y calendario.`);
+    if (!ok) return;
+    const result = await this.auth.cloneMenu(menu.id, menu.name + ' (copia)');
+    if (result.ok) {
+      this.toast.success('Menú clonado correctamente');
+    } else {
+      this.toast.error(result.error || 'Error al clonar');
+    }
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
     if (!this.showMenuDropdown) return;
@@ -124,6 +194,16 @@ export class App implements OnInit {
 
   logout() {
     this.auth.logout();
+  }
+
+  toggleDarkMode() {
+    this.isDark = !this.isDark;
+    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+    this.applyTheme();
+  }
+
+  private applyTheme() {
+    document.documentElement.setAttribute('data-theme', this.isDark ? 'dark' : 'light');
   }
 
   isLoginPage(): boolean {

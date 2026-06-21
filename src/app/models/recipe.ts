@@ -5,4 +5,6 @@ export interface Recipe {
   slot: 'lunch' | 'dinner' | 'any';
   tags: string[];
   cookidooId?: string;
+  servings: number;
+  image_url: string;
 }

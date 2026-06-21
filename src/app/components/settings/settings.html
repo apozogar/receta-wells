@@ -4,6 +4,26 @@
 
 <div class="settings-grid">
   <section class="card">
+    <h2>🔒 Cambiar contraseña</h2>
+    <p class="desc">Actualiza tu contraseña de acceso a MenuBox.</p>
+    <label>
+      Contraseña actual
+      <input type="password" [(ngModel)]="changePwCurrent" placeholder="Contraseña actual" />
+    </label>
+    <label>
+      Nueva contraseña
+      <input type="password" [(ngModel)]="changePwNew" placeholder="Mínimo 6 caracteres" />
+    </label>
+    <label>
+      Confirmar nueva contraseña
+      <input type="password" [(ngModel)]="changePwConfirm" placeholder="Repite la nueva contraseña" />
+    </label>
+    <button (click)="changePassword()" class="btn-test" [disabled]="changingPw">
+      {{ changingPw ? 'Cambiando...' : '🔐 Cambiar contraseña' }}
+    </button>
+    <p *ngIf="changePwResult" class="test-result">{{ changePwResult }}</p>
+  </section>
+  <section class="card">
     <h2>🍳 Cookidoo</h2>
     <p class="desc">Credenciales para auto-login y añadir recetas a la lista de la compra.</p>
     <label>
