@@ -205,8 +205,70 @@ button:hover { background-color: var(--accent); }
 .empty-state { text-align: center; padding: 30px; color: #999; }
 
 @media (max-width: 768px) {
+  :host { padding: 0 0 80px; }
+
   .form-grid { grid-template-columns: 1fr; }
-  .recipe-table { font-size: 0.8rem; }
-  .recipe-table th:nth-child(4),
-  .recipe-table td:nth-child(4) { display: none; }
+
+  .recipe-table,
+  .recipe-table thead,
+  .recipe-table tbody,
+  .recipe-table tr,
+  .recipe-table th,
+  .recipe-table td {
+    display: block;
+  }
+
+  .recipe-table thead {
+    display: none;
+  }
+
+  .recipe-table tr {
+    margin-bottom: 14px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .recipe-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.85rem;
+    text-align: right;
+  }
+
+  .recipe-table td:last-child {
+    border-bottom: none;
+    background: #f8f9fa;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 8px 14px;
+  }
+
+  .recipe-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .recipe-table td:last-child::before {
+    display: none;
+  }
+
+  .recipe-table .badge {
+    font-size: 0.75rem;
+  }
+
+  .recipe-table .tag {
+    font-size: 0.7rem;
+  }
 }

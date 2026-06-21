@@ -107,15 +107,15 @@
   </thead>
   <tbody>
     <tr *ngFor="let recipe of filteredRecipes">
-      <td>{{ recipe.name }}</td>
-      <td><span class="badge">{{ recipe.type }}</span></td>
-      <td>{{ slotLabel(recipe.slot) }}</td>
-      <td>
+      <td data-label="Nombre">{{ recipe.name }}</td>
+      <td data-label="Tipo"><span class="badge">{{ recipe.type }}</span></td>
+      <td data-label="Slot">{{ slotLabel(recipe.slot) }}</td>
+      <td data-label="Tags">
         <span *ngFor="let tag of recipe.tags" class="tag">{{ tag }}</span>
         <span *ngIf="!recipe.tags.length">—</span>
       </td>
-      <td>{{ recipe.cookidooId || '—' }}</td>
-      <td class="actions">
+      <td data-label="Cookidoo">{{ recipe.cookidooId || '—' }}</td>
+      <td data-label="Acciones" class="actions">
         <button (click)="startEdit(recipe)" class="btn-small">✏️</button>
         <button (click)="deleteRecipe(recipe)" class="btn-small btn-danger">🗑️</button>
       </td>

@@ -62,5 +62,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .save-msg { display: inline-block; margin-left: 15px; font-weight: 600; color: #27ae60; }
 
 @media (max-width: 768px) {
+  :host { padding: 0 0 80px; }
   .settings-grid { grid-template-columns: 1fr; }
 }
