@@ -52,7 +52,74 @@ export class Calendar implements OnInit, OnDestroy {
   aiLoading = false;
   aiError = '';
   hasAiKeys = false;
+  showRulesModal = false;
   showSyncModal = false;
+
+  typeOptions = [
+    { value: 'legumbres', label: 'Legumbres' },
+    { value: 'verduras', label: 'Verduras' },
+    { value: 'pescado', label: 'Pescado' },
+    { value: 'pasta', label: 'Pasta' },
+    { value: 'carne', label: 'Carne' },
+    { value: 'arroz', label: 'Arroz' },
+    { value: 'cena', label: 'Cena / Rápida' },
+    { value: 'free', label: 'Especiales / Libre' },
+  ];
+  editBoardRules: { lunch: string; dinner: string }[] = [];
+  presetModes = [
+    {
+      name: 'Equilibrado',
+      desc: 'Por defecto. Alterna legumbres, verduras, pescado, pasta, carne.',
+      rules: [
+        { lunch: 'legumbres', dinner: 'cena' },
+        { lunch: 'verduras', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'pasta', dinner: 'cena' },
+        { lunch: 'carne', dinner: 'free' },
+        { lunch: 'free', dinner: 'free' },
+        { lunch: 'arroz', dinner: 'cena' },
+      ],
+    },
+    {
+      name: 'Alto rendimiento',
+      desc: 'Más proteína. Carne y pescado como fuentes principales.',
+      rules: [
+        { lunch: 'carne', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'carne', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'carne', dinner: 'free' },
+        { lunch: 'free', dinner: 'free' },
+        { lunch: 'arroz', dinner: 'cena' },
+      ],
+    },
+    {
+      name: 'Pérdida de peso',
+      desc: 'Platos ligeros. Más verduras y legumbres, menos hidratos.',
+      rules: [
+        { lunch: 'verduras', dinner: 'cena' },
+        { lunch: 'legumbres', dinner: 'cena' },
+        { lunch: 'verduras', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'verduras', dinner: 'free' },
+        { lunch: 'free', dinner: 'free' },
+        { lunch: 'verduras', dinner: 'cena' },
+      ],
+    },
+    {
+      name: 'Competición',
+      desc: 'Máxima proteína. Plan estricto para preparación.',
+      rules: [
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'carne', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'cena' },
+        { lunch: 'carne', dinner: 'cena' },
+        { lunch: 'pescado', dinner: 'free' },
+        { lunch: 'free', dinner: 'free' },
+        { lunch: 'carne', dinner: 'cena' },
+      ],
+    },
+  ];
   syncLoading = false;
   syncShoppingRecipes: string[] = [];
   syncAgendaItems: { name: string; date: string }[] = [];
@@ -275,6 +342,45 @@ export class Calendar implements OnInit, OnDestroy {
     } else {
       this.rules = { ...this.defaultRules };
     }
+  }
+
+  openRulesModal() {
+    const dayIndex = (dow: number) => dow === 0 ? 6 : dow - 1;
+    this.editBoardRules = [];
+    for (let i = 0; i < 7; i++) {
+      const dow = i === 6 ? 0 : i + 1;
+      const rule = this.rules[dow] || this.defaultRules[dow];
+      this.editBoardRules.push({ lunch: rule.lunch, dinner: rule.dinner });
+    }
+    this.showRulesModal = true;
+  }
+
+  closeRulesModal() {
+    this.showRulesModal = false;
+  }
+
+  applyPreset(mode: typeof this.presetModes[0]) {
+    this.editBoardRules = mode.rules.map(r => ({ ...r }));
+  }
+
+  saveBoardRules() {
+    const rulesObj: any = {};
+    for (let i = 0; i < 6; i++) {
+      rulesObj[i + 1] = { lunch: this.editBoardRules[i].lunch, dinner: this.editBoardRules[i].dinner };
+    }
+    rulesObj[0] = { lunch: this.editBoardRules[6].lunch, dinner: this.editBoardRules[6].dinner };
+    this.rules = { ...this.rules, ...rulesObj };
+
+    this.menuService.saveSetting('board_rules', JSON.stringify(rulesObj)).subscribe({
+      next: () => {
+        this.toast.success('Reglas guardadas');
+        this.showRulesModal = false;
+      },
+      error: (err) => {
+        this.toast.error('Error al guardar reglas');
+        console.error(err);
+      },
+    });
   }
 
   generate() {

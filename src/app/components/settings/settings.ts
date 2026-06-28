@@ -30,26 +30,7 @@ export class Settings implements OnInit {
   testingCookidoo = false;
   cookidooTestResult: string | null = null;
 
-  weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  typeOptions = [
-    { value: 'legumbres', label: 'Legumbres' },
-    { value: 'verduras', label: 'Verduras' },
-    { value: 'pescado', label: 'Pescado' },
-    { value: 'pasta', label: 'Pasta' },
-    { value: 'carne', label: 'Carne' },
-    { value: 'arroz', label: 'Arroz' },
-    { value: 'cena', label: 'Cena / Rápida' },
-    { value: 'free', label: 'Especiales / Libre' },
-  ];
-  boardRules: { lunch: string; dinner: string }[] = [
-    { lunch: 'legumbres', dinner: 'cena' },
-    { lunch: 'verduras', dinner: 'cena' },
-    { lunch: 'pescado', dinner: 'cena' },
-    { lunch: 'pasta', dinner: 'cena' },
-    { lunch: 'carne', dinner: 'free' },
-    { lunch: 'free', dinner: 'free' },
-    { lunch: 'arroz', dinner: 'cena' },
-  ];
+
 
   constructor(
     private menuService: MenuService,
@@ -90,35 +71,11 @@ export class Settings implements OnInit {
       this.cookidooLanguage = settings['cookidoo_language'] || 'es-ES';
       this.geminiApiKey = settings['gemini_api_key'] || '';
       this.groqApiKey = settings['groq_api_key'] || '';
-      const saved = settings['board_rules'];
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const defaultRules = [
-            { lunch: 'legumbres', dinner: 'cena' },
-            { lunch: 'verduras', dinner: 'cena' },
-            { lunch: 'pescado', dinner: 'cena' },
-            { lunch: 'pasta', dinner: 'cena' },
-            { lunch: 'carne', dinner: 'free' },
-            { lunch: 'free', dinner: 'free' },
-            { lunch: 'arroz', dinner: 'cena' },
-          ];
-          this.boardRules = defaultRules.map((d, i) => ({
-            lunch: parsed[i]?.lunch || d.lunch,
-            dinner: parsed[i]?.dinner || d.dinner,
-          }));
-        } catch {}
-      }
+
     });
   }
 
   private saveAllSettings() {
-    const rulesObj: any = {};
-    for (let i = 0; i < 6; i++) {
-      rulesObj[i + 1] = { lunch: this.boardRules[i].lunch, dinner: this.boardRules[i].dinner };
-    }
-    rulesObj[0] = { lunch: this.boardRules[6].lunch, dinner: this.boardRules[6].dinner };
-
     const entries = [
       { key: 'cookidoo_email', value: this.cookidooEmail },
       { key: 'cookidoo_password', value: this.cookidooPassword },
@@ -126,7 +83,6 @@ export class Settings implements OnInit {
       { key: 'cookidoo_language', value: this.cookidooLanguage },
       { key: 'gemini_api_key', value: this.geminiApiKey },
       { key: 'groq_api_key', value: this.groqApiKey },
-      { key: 'board_rules', value: JSON.stringify(rulesObj) },
     ];
     // Intenta batch, fallback a individual
     const batch = this.menuService.saveSettingsBatch(entries);

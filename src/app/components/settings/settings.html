@@ -82,34 +82,6 @@
     <p class="hint">No requiere inicio de sesión.</p>
   </section>
 
-  <section class="card">
-    <h2>📋 Reglas de la pizarra</h2>
-    <p class="desc">Define qué tipo de comida toca cada día de la semana. Se usa para la generación aleatoria y como base para la IA.</p>
-    <table class="rules-table">
-      <thead>
-        <tr>
-          <th>Día</th>
-          <th>Comida</th>
-          <th>Cena</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let day of weekDays; let i = index">
-          <td class="day-name">{{ day }}</td>
-          <td>
-            <select [(ngModel)]="boardRules[i].lunch">
-              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
-            </select>
-          </td>
-          <td>
-            <select [(ngModel)]="boardRules[i].dinner">
-              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
-            </select>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
 </div>
 
 <div class="save-bar">

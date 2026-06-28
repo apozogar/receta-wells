@@ -3,7 +3,7 @@
   <div class="mobile-header" *ngIf="user && !isLoginPage()">
     <span class="mobile-brand">MenuBox</span>
     <div class="menu-dropdown mobile">
-      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
+      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()" [attr.aria-expanded]="showMenuDropdown">
         <span>📋</span>
         <span class="menu-toggle-label">{{ menus.length === 0 ? 'Sin menú' : currentMenuName }}</span>
         <span class="menu-toggle-arrow">▼</span>
@@ -44,7 +44,7 @@
     </div>
 
     <div class="menu-dropdown desktop">
-      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()">
+      <button class="menu-dropdown-toggle" type="button" (click)="toggleMenuDropdown()" [attr.aria-expanded]="showMenuDropdown">
         <span class="menu-toggle-label">{{ menus.length === 0 ? 'Sin menú — Crear uno' : currentMenuName }}</span>
         <span class="menu-toggle-arrow">▼</span>
       </button>

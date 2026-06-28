@@ -15,6 +15,7 @@
       {{ viewMode === 'month' ? '📆 Semanal' : '📅 Mensual' }}
     </button>
     <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
+    <button (click)="openRulesModal()" class="btn-secondary">📋 Reglas</button>
     <button (click)="addToShoppingList()" class="btn-success">🛒 Cookidoo</button>
 </div>
 
@@ -129,6 +130,52 @@
     </div>
 
     <button class="btn-primary picker-btn" (click)="cancelEdit()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal de reglas de la pizarra -->
+<div class="modal-overlay" *ngIf="showRulesModal" (click)="closeRulesModal()">
+  <div class="modal-content rules-modal" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="closeRulesModal()">✕</button>
+    <h2>📋 Reglas de la pizarra</h2>
+    <p class="picker-subtitle">Define qué tipo de comida toca cada día. Elige un modo predefinido o personaliza cada día.</p>
+
+    <div class="preset-buttons">
+      <button *ngFor="let mode of presetModes" class="preset-btn" (click)="applyPreset(mode)">
+        <strong>{{ mode.name }}</strong>
+        <span class="preset-desc">{{ mode.desc }}</span>
+      </button>
+    </div>
+
+    <table class="rules-table">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Comida</th>
+          <th>Cena</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let day of weekDays; let i = index">
+          <td class="day-name">{{ day }}</td>
+          <td>
+            <select [(ngModel)]="editBoardRules[i].lunch">
+              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </td>
+          <td>
+            <select [(ngModel)]="editBoardRules[i].dinner">
+              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="rules-modal-actions">
+      <button class="btn-primary" (click)="saveBoardRules()">💾 Guardar reglas</button>
+      <button class="btn-cancel" (click)="closeRulesModal()">Cancelar</button>
+    </div>
   </div>
 </div>
 
