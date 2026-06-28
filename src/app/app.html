@@ -86,13 +86,13 @@
         <span class="user-avatar">👤</span>
         <span class="user-name">{{ user.username }}</span>
       </div>
-      <button (click)="toggleDarkMode()" class="btn-logout" style="margin-bottom: 8px;">{{ isDark ? '☀️ Modo claro' : '🌙 Modo oscuro' }}</button>
+      <!-- <button (click)="toggleDarkMode()" class="btn-logout" style="margin-bottom: 8px;">{{ isDark ? '☀️ Modo claro' : '🌙 Modo oscuro' }}</button> -->
       <button (click)="logout()" class="btn-logout">Cerrar sesión</button>
     </div>
   </aside>
 
   <!-- Main content -->
-  <div class="main-content">
+  <div class="main-content" [class.logged-in]="user && !isLoginPage()">
     <router-outlet></router-outlet>
   </div>
 

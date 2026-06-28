@@ -3,11 +3,10 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subscription, lastValueFrom } from 'rxjs';
-import { MenuService } from '../../services/menu.service';
+import { MenuService, CalendarEntry } from '../../services/menu.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
-import { MercadonaService } from '../../services/mercadona.service';
-import { ShoppingItem } from '../../models/ingredient';
+import { Ingredient } from '../../models/ingredient';
 
 interface CategorizedIngredient {
   name: string;
@@ -39,11 +38,6 @@ export class ShoppingList implements OnInit, OnDestroy {
   loadError = '';
   private menuSub?: Subscription;
 
-  showMercadonaModal = false;
-  mercadonaLoading = false;
-  mercadonaError = '';
-  mercadonaResults: ShoppingItem[] = [];
-
   categoryOrder = [
     { key: 'verdura', label: '🥬 Verduras y hortalizas' },
     { key: 'fruta', label: '🍎 Frutas' },
@@ -58,7 +52,6 @@ export class ShoppingList implements OnInit, OnDestroy {
   constructor(
     private menuService: MenuService,
     private auth: AuthService,
-    private mercadona: MercadonaService,
     private toast: ToastService,
   ) {
     const now = new Date();
@@ -173,60 +166,43 @@ export class ShoppingList implements OnInit, OnDestroy {
     }
   }
 
-  async sendToMercadona() {
-    const unchecked = this.groups.flatMap(g => g.items.filter(i => !i.checked));
-    if (unchecked.length === 0) {
-      this.toast.info('Todos los ingredientes están marcados como comprados');
-      return;
-    }
+  scrapingMissing = false;
 
-    this.showMercadonaModal = true;
-    this.mercadonaLoading = true;
-    this.mercadonaError = '';
-    this.mercadonaResults = [];
-
-    const settings = await lastValueFrom(this.menuService.getSettings());
-    const customerUuid = settings['mercadona_customer_uuid'] || '';
-    const accessToken = settings['mercadona_access_token'] || '';
-    const warehouse = settings['mercadona_warehouse'] || '146';
-
-    if (!customerUuid || !accessToken) {
-      this.mercadonaError = 'Configura los datos de Mercadona en Ajustes primero.';
-      this.mercadonaLoading = false;
-      return;
-    }
-
-    const ingredientNames = [...new Set(unchecked.map(i => i.name))];
-    const allItems: ShoppingItem[] = [];
-    for (const name of ingredientNames) {
-      const product = await this.mercadona.searchIngredient(name);
-      if (product) {
-        allItems.push({ ingredient: name, matchedProduct: product, skipped: false });
-      } else {
-        allItems.push({ ingredient: name, skipped: true, reason: 'No encontrado' });
+  async scrapeMissing() {
+    this.scrapingMissing = true;
+    this.toast.info('Buscando ingredientes en Cookidoo...');
+    try {
+      const calendar = await lastValueFrom(
+        this.menuService.getCalendar(this.currentMonth, this.currentYear),
+      );
+      const recipeIds = new Set<number>();
+      for (const entry of calendar) {
+        if (entry.lunch_recipe_id > 0) recipeIds.add(entry.lunch_recipe_id);
+        if (entry.dinner_recipe_id > 0) recipeIds.add(entry.dinner_recipe_id);
       }
-    }
 
-    const toAdd = allItems
-      .filter(i => !i.skipped && i.matchedProduct)
-      .map(i => ({ id: i.matchedProduct!.id, quantity: 1 }));
-
-    if (toAdd.length > 0) {
-      try {
-        await lastValueFrom(this.mercadona.addToCart(toAdd, { customerUuid, warehouse, accessToken }));
-        this.toast.success(`${toAdd.length} productos añadidos al carrito`);
-      } catch (e: any) {
-        this.toast.error('Error al añadir al carrito: ' + (e.message || 'Desconocido'));
+      let scraped = 0;
+      let skipped = 0;
+      for (const id of recipeIds) {
+        const ings = await lastValueFrom(this.menuService.getIngredients(id));
+        if (ings.length > 0) { skipped++; continue; }
+        try {
+          const result = await lastValueFrom(this.menuService.scrapeIngredients(id));
+          if (result.ingredients.length > 0) {
+            await lastValueFrom(this.menuService.saveIngredients(id, result.ingredients));
+            scraped++;
+          } else {
+            skipped++;
+          }
+        } catch { skipped++; }
       }
+
+      this.toast.success(`${scraped} recetas con ingredientes nuevos, ${skipped} sin cambios`);
+      this.loadShoppingList();
+    } catch (e: any) {
+      this.toast.error('Error al obtener ingredientes: ' + (e.message || 'desconocido'));
     }
-
-    this.mercadonaResults = allItems;
-    this.mercadonaLoading = false;
-  }
-
-  closeMercadonaModal() {
-    this.showMercadonaModal = false;
-    this.mercadonaResults = [];
+    this.scrapingMissing = false;
   }
 
   print() {

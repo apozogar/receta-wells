@@ -57,8 +57,16 @@ export class App implements OnInit {
     this.auth.menus$.subscribe(m => {
       this.menus = m;
     });
+    let menuInit = true;
     this.auth.currentMenuId$.subscribe(id => {
       this.currentMenuId = id;
+      if (!menuInit) {
+        setTimeout(() => {
+          const el = document.querySelector('.main-content');
+          if (el) el.scrollTop = 0;
+        });
+      }
+      menuInit = false;
     });
     if (this.auth.isLoggedIn()) {
       this.auth.loadMenus();

@@ -9,8 +9,6 @@ import { ToastService } from '../../services/toast.service';
 import { ConfirmService } from '../../services/confirm.service';
 import { Recipe } from '../../models/recipe';
 import { Thermomix } from '../../services/thermomix';
-import { MercadonaService } from '../../services/mercadona.service';
-import { ShoppingItem } from '../../models/ingredient';
 import { HttpClient } from '@angular/common/http';
 
 interface CalendarDay {
@@ -67,7 +65,6 @@ export class Calendar implements OnInit, OnDestroy {
     private menuService: MenuService,
     private auth: AuthService,
     private thermomix: Thermomix,
-    private mercadona: MercadonaService,
     private http: HttpClient,
     private toast: ToastService,
     private confirmSvc: ConfirmService,
@@ -77,16 +74,17 @@ export class Calendar implements OnInit, OnDestroy {
     this.currentYear = now.getFullYear();
   }
 
-  // Reglas de la pizarra
-  rules: { [key: number]: { lunch: string; dinner: string } } = {
-    1: { lunch: 'legumbres', dinner: 'cena' }, // Lunes
-    2: { lunch: 'verduras', dinner: 'cena' }, // Martes
-    3: { lunch: 'pescado', dinner: 'cena' }, // Miércoles
-    4: { lunch: 'pasta', dinner: 'cena' }, // Jueves
-    5: { lunch: 'carne', dinner: 'free' }, // Viernes
-    6: { lunch: 'free', dinner: 'free' }, // Sábado
-    0: { lunch: 'arroz', dinner: 'cena' }, // Domingo (Arroz o Batch Cooking)
+  // Reglas de la pizarra (se sobrescriben desde settings al cargar)
+  private readonly defaultRules: { [key: number]: { lunch: string; dinner: string } } = {
+    1: { lunch: 'legumbres', dinner: 'cena' },
+    2: { lunch: 'verduras', dinner: 'cena' },
+    3: { lunch: 'pescado', dinner: 'cena' },
+    4: { lunch: 'pasta', dinner: 'cena' },
+    5: { lunch: 'carne', dinner: 'free' },
+    6: { lunch: 'free', dinner: 'free' },
+    0: { lunch: 'arroz', dinner: 'cena' },
   };
+  rules: { [key: number]: { lunch: string; dinner: string } } = { ...this.defaultRules };
 
   ngOnInit() {
     this.menuSub = this.auth.currentMenuId$.subscribe(() => {
@@ -94,6 +92,7 @@ export class Calendar implements OnInit, OnDestroy {
     });
     this.menuService.getSettings().subscribe(settings => {
       this.hasAiKeys = !!(settings['gemini_api_key'] || settings['groq_api_key']);
+      this.loadBoardRules(settings);
     });
   }
 
@@ -266,6 +265,18 @@ export class Calendar implements OnInit, OnDestroy {
     return picked;
   }
 
+  private loadBoardRules(settings: Record<string, string>) {
+    const saved = settings['board_rules'];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        this.rules = { ...this.defaultRules, ...parsed };
+      } catch {}
+    } else {
+      this.rules = { ...this.defaultRules };
+    }
+  }
+
   generate() {
     if (this.hasAiKeys) {
       this.generateAiCalendar();
@@ -433,6 +444,18 @@ export class Calendar implements OnInit, OnDestroy {
   };
 
   groupedRecipes: { label: string; recipes: Recipe[] }[] = [];
+  recipeSearchText = '';
+
+  get filteredGroupedRecipes(): { label: string; recipes: Recipe[] }[] {
+    const q = this.recipeSearchText.toLowerCase().trim();
+    if (!q) return this.groupedRecipes;
+    return this.groupedRecipes
+      .map(g => ({
+        label: g.label,
+        recipes: g.recipes.filter(r => r.name.toLowerCase().includes(q)),
+      }))
+      .filter(g => g.recipes.length > 0);
+  }
 
   startEdit(day: CalendarDay, slot: 'lunch' | 'dinner') {
     if (day.isPast) return;
@@ -454,6 +477,7 @@ export class Calendar implements OnInit, OnDestroy {
     for (const [type, recipes] of groups) {
       this.groupedRecipes.push({ label: this.typeLabels[type] || type, recipes });
     }
+    this.recipeSearchText = '';
     this.showRecipePicker = true;
     
   }
@@ -476,11 +500,140 @@ export class Calendar implements OnInit, OnDestroy {
     this.editingSlot = null;
     this.availableRecipesForSlot = [];
     this.groupedRecipes = [];
+    this.recipeSearchText = '';
     
   }
 
   print() {
-    window.print();
+    if (!this.calendarDays.length) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const styles = `
+      @page { size: landscape; margin: 8mm; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+        color: #1e293b;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 6px;
+      }
+      .header h1 {
+        font-size: 20pt;
+        font-weight: 800;
+        letter-spacing: 1px;
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+      }
+      .day-header {
+        text-align: center;
+        font-weight: 700;
+        font-size: 8pt;
+        padding: 5px 2px;
+        background: #1e293b;
+        color: white;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .day-card {
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 4px 5px;
+        min-height: 72px;
+        font-size: 7.5pt;
+        line-height: 1.25;
+      }
+      .day-card.empty {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+      }
+      .day-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .date-number {
+        font-weight: 700;
+        font-size: 10pt;
+        background: #e5e7eb;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+      }
+      .day-name {
+        font-size: 6.5pt;
+        color: #6b7280;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .meal { margin-bottom: 2px; }
+      .meal strong {
+        display: block;
+        font-size: 5.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .lunch strong { color: #0f3460; }
+      .dinner strong { color: #27ae60; }
+      .no-meal { color: #d1d5db; font-style: italic; }
+    `;
+
+    const monthName = this.monthNames[this.currentMonth];
+    const year = this.currentYear;
+
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Menú ${monthName} ${year}</title><style>${styles}</style></head><body>`;
+    html += `<div class="header"><h1>${monthName} ${year}</h1></div>`;
+    html += `<div class="calendar-grid">`;
+
+    for (const day of this.weekDays) {
+      html += `<div class="day-header">${day}</div>`;
+    }
+
+    for (const day of this.calendarDays) {
+      if (day.isEmpty) {
+        html += `<div class="day-card empty"></div>`;
+      } else {
+        const lunchName = day.lunch?.name || '—';
+        const dinnerName = day.dinner?.name || '—';
+        html += `<div class="day-card">
+          <div class="day-card-header">
+            <span class="day-name">${day.dayName}</span>
+            <span class="date-number">${day.day}</span>
+          </div>
+          <div class="meal lunch">
+            <strong>COMIDA</strong>
+            <span>${lunchName}</span>
+          </div>
+          <div class="meal dinner">
+            <strong>CENA</strong>
+            <span>${dinnerName}</span>
+          </div>
+        </div>`;
+      }
+    }
+
+    html += `</div></body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.onafterprint = () => printWindow.close();
+    }, 300);
   }
 
   generateAiCalendar() {
@@ -631,92 +784,5 @@ export class Calendar implements OnInit, OnDestroy {
   closeSyncModal() {
     this.showSyncModal = false;
     
-  }
-
-  async addToMercadona() {
-    // Cargar settings guardadas
-    const settings = await lastValueFrom(this.menuService.getSettings());
-    let customerUuid = settings['mercadona_customer_uuid'] || '';
-    let accessToken = settings['mercadona_access_token'] || '';
-    let warehouse = settings['mercadona_warehouse'] || '146';
-
-    // Si faltan, pedirlas al usuario
-    if (!customerUuid) {
-      customerUuid = prompt('Customer UUID (de MO-user > customerUuid):') || '';
-      if (!customerUuid) return;
-    }
-    if (!accessToken) {
-      accessToken = prompt('Token de acceso de Mercadona (de MO-user > accessToken):') || '';
-      if (!accessToken) return;
-    }
-    warehouse = prompt(`Código de almacén (wh) [${warehouse}]:`) || warehouse;
-
-    const ingredients = new Map<string, number>();
-
-    for (const day of this.calendarDays) {
-      if (!day.day) continue;
-      for (const meal of [day.lunch, day.dinner]) {
-        if (!meal || meal.id == null || meal.id < 0) continue;
-        try {
-          let ings = await lastValueFrom(this.menuService.getIngredients(meal.id));
-          if (ings.length === 0) {
-            const scraped = await lastValueFrom(this.menuService.scrapeIngredients(meal.id));
-            ings = scraped.ingredients;
-            if (ings.length > 0) {
-              await lastValueFrom(this.menuService.saveIngredients(meal.id, ings));
-            }
-          }
-          for (const ing of ings) {
-            const key = ing.name.toLowerCase();
-            ingredients.set(key, (ingredients.get(key) || 0) + 1);
-          }
-        } catch { }
-      }
-    }
-
-    if (ingredients.size === 0) {
-      this.toast.error('No se pudieron obtener ingredientes de las recetas.');
-      return;
-    }
-
-    const allItems: ShoppingItem[] = [];
-    for (const [name] of ingredients) {
-      const product = await this.mercadona.searchIngredient(name);
-      if (product) {
-        allItems.push({ ingredient: name, matchedProduct: product, skipped: false });
-      } else {
-        allItems.push({ ingredient: name, skipped: true, reason: 'No encontrado o es fruta/verdura' });
-      }
-    }
-
-    const toAdd = allItems
-      .filter(i => !i.skipped && i.matchedProduct)
-      .map(i => ({ id: i.matchedProduct!.id, quantity: 1 }));
-
-    if (toAdd.length === 0) {
-      this.toast.error('No se encontraron productos en Mercadona.');
-      return;
-    }
-
-    try {
-      const result = await lastValueFrom(this.mercadona.addToCart(toAdd, {
-        customerUuid,
-        warehouse,
-        accessToken,
-      }));
-      // Guardar settings si se usaron nuevas
-      await lastValueFrom(this.menuService.saveSettingsBatch([
-        { key: 'mercadona_customer_uuid', value: customerUuid },
-        { key: 'mercadona_access_token', value: accessToken },
-        { key: 'mercadona_warehouse', value: warehouse },
-      ]));
-      const skipped = allItems.filter(i => i.skipped).map(i => i.ingredient);
-      this.toast.success(`${toAdd.length} productos añadidos al carrito`);
-      if (skipped.length > 0) {
-        this.toast.info('No se añadieron: ' + skipped.join(', '));
-      }
-    } catch (e: any) {
-      this.toast.error('Error al añadir al carrito: ' + (e.message || 'Desconocido'));
-    }
   }
 }

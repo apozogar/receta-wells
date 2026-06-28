@@ -84,16 +84,6 @@
   color: #fff;
 }
 
-.nav-bar .btn-mercadona {
-  border-color: #e67e22;
-  color: #e67e22;
-}
-
-.nav-bar .btn-mercadona:hover {
-  background: #e67e22;
-  color: #fff;
-}
-
 .nav-bar .btn-ai {
   border-color: #8b5cf6;
   color: #8b5cf6;
@@ -456,6 +446,23 @@
   font-size: 0.85rem;
   color: #6b7280;
   margin: -8px 0 16px;
+}
+
+.picker-search {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.picker-search:focus {
+  border-color: #e94560;
+  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
 }
 
 .picker-groups {

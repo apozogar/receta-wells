@@ -61,6 +61,12 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .save-msg { display: inline-block; margin-left: 15px; font-weight: 600; color: #27ae60; }
 
+.rules-table { width: 100%; border-collapse: collapse; }
+.rules-table th, .rules-table td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+.rules-table th { font-size: 0.85rem; color: #7f8c8d; font-weight: 600; }
+.rules-table .day-name { font-weight: 600; }
+.rules-table select { width: 100%; padding: 6px; }
+
 @media (max-width: 768px) {
   :host { padding: 0 0 80px; }
   .settings-grid { grid-template-columns: 1fr; }

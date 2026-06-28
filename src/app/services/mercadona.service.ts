@@ -5,12 +5,6 @@ import { MercadonaProduct, ShoppingItem } from '../models/ingredient';
 
 const FRUIT_VEG_CATEGORY_ID = 1;
 
-export interface MercadonaSession {
-  customerUuid: string;
-  warehouse: string;
-  accessToken: string;
-}
-
 @Injectable({
   providedIn: 'root',
 })
@@ -57,14 +51,5 @@ export class MercadonaService {
       }
     }
     return items;
-  }
-
-  addToCart(products: { id: string; quantity: number }[], session: MercadonaSession): Observable<any> {
-    return this.http.post(`${this.apiUrl}/mercadona/cart/add`, {
-      customerUuid: session.customerUuid,
-      warehouse: session.warehouse,
-      accessToken: session.accessToken,
-      products,
-    });
   }
 }

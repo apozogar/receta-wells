@@ -601,20 +601,32 @@ app.post('/api/menu/generate-ai', authMiddleware, async (req, res) => {
     const firstDay = startDay || 1;
     const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const dayAbbr = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
-    const dayRules = {
-      0: { l: 'arroz', n: 'cena' },
-      1: { l: 'legumbres', n: 'cena' },
-      2: { l: 'verduras', n: 'cena' },
-      3: { l: 'pescado', n: 'cena' },
-      4: { l: 'pasta', n: 'cena' },
-      5: { l: 'carne', n: 'libre' },
-      6: { l: 'libre', n: 'libre' },
+    const dayRulesDefault = {
+      0: { lunch: 'arroz', dinner: 'cena' },
+      1: { lunch: 'legumbres', dinner: 'cena' },
+      2: { lunch: 'verduras', dinner: 'cena' },
+      3: { lunch: 'pescado', dinner: 'cena' },
+      4: { lunch: 'pasta', dinner: 'cena' },
+      5: { lunch: 'carne', dinner: 'free' },
+      6: { lunch: 'free', dinner: 'free' },
     };
+    let dayRules;
+    const { rows: ruleRows } = await query(
+      "SELECT value FROM settings WHERE key = 'board_rules' AND menu_id = $1",
+      [menuId]
+    );
+    if (ruleRows.length > 0) {
+      try {
+        dayRules = JSON.parse(ruleRows[0].value);
+      } catch { dayRules = null; }
+    }
+    if (!dayRules) dayRules = dayRulesDefault;
 
     let calendarRules = '';
     for (let d = firstDay; d <= daysInMonth; d++) {
       const dow = new Date(year, month, d).getDay();
-      calendarRules += `${d}=${dayAbbr[dow]}(${dayRules[dow].l}/${dayRules[dow].n}) `;
+      const rule = dayRules[dow] || dayRulesDefault[dow];
+      calendarRules += `${d}=${dayAbbr[dow]}(${rule.lunch}/${rule.dinner}) `;
     }
 
     const prompt = `Eres nutricionista. Genera menú equilibrado para ${monthNames[month]} (días ${firstDay}-${daysInMonth}).
@@ -862,48 +874,6 @@ app.post('/api/mercadona/search', authMiddleware, async (req, res) => {
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: 'Error al buscar: ' + e.message });
-  }
-});
-
-app.post('/api/mercadona/cart/add', authMiddleware, async (req, res) => {
-  const { customerUuid, warehouse, accessToken, products } = req.body;
-  if (!customerUuid || !warehouse || !accessToken || !Array.isArray(products)) {
-    return res.status(400).json({ error: 'Faltan campos: customerUuid, warehouse, accessToken, products' });
-  }
-  const baseUrl = `https://tienda.mercadona.es/api`;
-  try {
-    const cartRes = await fetch(`${baseUrl}/customers/${customerUuid}/cart/?lang=es&wh=${warehouse}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!cartRes.ok) return res.status(502).json({ error: 'Error al obtener carrito' });
-    const cart = await cartRes.json();
-    const lines = cart.lines.map(l => ({
-      quantity: l.quantity,
-      product_id: l.product.id,
-      sources: l.sources,
-    }));
-    products.forEach(p => {
-      const existing = lines.find(l => l.product_id === p.id);
-      if (existing) {
-        existing.quantity += (p.quantity || 1);
-        existing.sources.push('+NA');
-      } else {
-        lines.push({ quantity: p.quantity || 1, product_id: p.id, sources: ['+NA'] });
-      }
-    });
-    const updateRes = await fetch(`${baseUrl}/customers/${customerUuid}/cart/?lang=es&wh=${warehouse}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ id: cart.id, version: cart.version, lines }),
-    });
-    if (!updateRes.ok) return res.status(502).json({ error: 'Error al actualizar carrito' });
-    const updated = await updateRes.json();
-    res.json({ message: 'Productos añadidos al carrito', products_count: updated.products_count });
-  } catch (e) {
-    res.status(500).json({ error: 'Error: ' + e.message });
   }
 });
 

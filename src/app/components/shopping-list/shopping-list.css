@@ -59,7 +59,6 @@ button:hover { opacity: 0.9; }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary { background-color: #95a5a6; }
-.btn-mercadona { background-color: #1a8d5e; }
 .btn-print { background-color: #6c7a89; }
 
 .error { background: #ffe3e3; color: #c0392b; padding: 12px; border-radius: 6px; margin-bottom: 15px; }
@@ -180,9 +179,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .modal-body { padding: 16px 20px; }
 .modal-footer { padding: 0 20px 20px; text-align: right; }
-
-.mercadona-result { padding: 6px 0; font-size: 0.9rem; }
-.skipped { color: #e67e22; }
 
 @media (max-width: 768px) {
   :host { padding: 0 0 80px; }

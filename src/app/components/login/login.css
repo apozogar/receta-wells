@@ -224,6 +224,12 @@
    RESPONSIVE — Mobile
    ════════════════════════════════ */
 @media (max-width: 768px) {
+  :host,
+  .login-wrapper {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
   .login-brand {
     display: none;
   }
@@ -233,37 +239,89 @@
     min-width: 0;
     padding: 0;
     background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+    min-height: 100vh;
+    min-height: 100dvh;
+    align-items: flex-start;
   }
 
   .login-card {
     max-width: 100%;
-    background: #fff;
-    border-radius: 20px;
-    padding: 36px 28px;
-    margin: 0 20px;
-    width: calc(100% - 40px);
+    background: transparent;
+    border-radius: 0;
+    padding: 48px 28px 32px;
+    margin: 0;
+    width: 100%;
+    border: none;
+    backdrop-filter: none;
   }
 
   .login-card h2 {
-    font-size: 1.25rem;
+    color: #fff;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+
+  .login-card .subtitle {
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 36px;
+  }
+
+  .field-group {
+    margin-bottom: 4px;
+  }
+
+  .field-group label {
+    color: rgba(255, 255, 255, 0.75);
   }
 
   .field-group input {
-    padding: 14px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    padding: 15px;
     font-size: 16px;
+    border-radius: 10px;
+  }
+
+  .field-group input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .field-group input:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
   }
 
   .btn-submit {
+    background: #e94560;
     padding: 15px;
     font-size: 1rem;
+    border-radius: 10px;
+    margin-top: 8px;
   }
-}
 
-@media (max-width: 380px) {
-  .login-card {
-    margin: 0 12px;
-    width: calc(100% - 24px);
-    padding: 28px 20px;
+  .btn-submit:hover {
+    background: #d63851;
+  }
+
+  .toggle {
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 28px;
+  }
+
+  .toggle .link {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .toggle .link:hover {
+    border-bottom-color: rgba(255, 255, 255, 0.9);
+  }
+
+  .error {
+    background: rgba(220, 38, 38, 0.15);
+    color: #fca5a5;
+    border-color: rgba(220, 38, 38, 0.25);
   }
 }
 

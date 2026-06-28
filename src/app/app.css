@@ -608,8 +608,11 @@ body {
   .main-content {
     margin-left: 0;
     width: 100%;
-    padding: 12px;
     flex: 1;
+  }
+
+  .main-content.logged-in {
+    padding: 52px 0 72px;
   }
 
   .mobile-header {
@@ -620,8 +623,10 @@ body {
     height: 52px;
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     color: #fff;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    width: 100%;
     z-index: 99;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
     gap: 10px;

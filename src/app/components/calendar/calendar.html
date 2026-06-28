@@ -16,7 +16,6 @@
     </button>
     <button (click)="print()" class="btn-secondary">🖨️ Imprimir</button>
     <button (click)="addToShoppingList()" class="btn-success">🛒 Cookidoo</button>
-    <button (click)="addToMercadona()" class="btn-mercadona">🛍️ Mercadona</button>
 </div>
 
 <div class="week-nav" *ngIf="viewMode === 'week'">
@@ -107,8 +106,16 @@
       {{ editingSlot === 'lunch' ? 'ALMUERZO' : 'CENA' }} — {{ editingDay.day }} de {{ monthNames[currentMonth] }} {{ currentYear }}
     </p>
 
+    <input
+      type="text"
+      class="picker-search"
+      placeholder="Buscar receta…"
+      [(ngModel)]="recipeSearchText"
+      (click)="$event.stopPropagation()"
+    />
+
     <div class="picker-groups">
-      <div *ngFor="let group of groupedRecipes" class="picker-group">
+      <div *ngFor="let group of filteredGroupedRecipes" class="picker-group">
         <h3 class="picker-group-title">{{ group.label }}</h3>
         <div class="picker-recipes">
           <div *ngFor="let r of group.recipes"
